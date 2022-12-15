@@ -22,10 +22,11 @@ namespace CardMagnifier.MonoBehaviors
         };
 
         public static Vector2Int defaultResolution = new Vector2Int(1920, 1080); // in case of adaptive zoom feature
+        // public static float mapEmbiggenerScale = 1.0f;
 
         // scale 0-1, 0 = original card pos, 1 = zoom to configured pos
         public static float configPosInterpolateFactor = 1.0f;
-        public static Vector3 configZoomToPos = new Vector3(0.0f, 3.25f, -10.0f);
+        public static Vector3 configZoomToPos = new Vector3(0.0f, 3.5f, -10.0f);
 
         // whether to zoom the entire card to fixed scales or not, instead of relative to its default size when hilighted
         public static bool configZoomAbsoluteEnable = true;
@@ -39,11 +40,16 @@ namespace CardMagnifier.MonoBehaviors
         public Vector3 cardZoomToPos, cardPreviousPos, cardPreviousRotation;
         public Vector3 cardZoomToScale, cardPreviousScale;
 
+        // Other QoL
+        public static bool configDisableDiscardEffect = false;
+        public static bool configDisableCardBobbingEffect = false;
+        public static bool configDisableCardFlippingEffect = false;
+
         // CardBar Previews
         public static Vector3 configCardBarPreviewPosition = new Vector3(25.0f, 0.0f, -10.0f);
         public static float configCardBarPreviewScale = 1.35f;
 
-        // Discarded effect variables
+        // Discarded card effect variables
         public static float initialXSpeedMin = -2.0f;
         public static float initialXSpeedMax = 2.0f;
         public static float initialYSpeedMin = 2.5f;
@@ -77,7 +83,9 @@ namespace CardMagnifier.MonoBehaviors
 
         // debug
         private bool cardLifeExtended = false;
-        public static float cardLifeTimeAdd = 0.65f;
+        public static float cardLifeTimeAdd = 0.5f;
+        public float cardLifeExtendedTime = 0.0f; // realtime marker
+        public static float realTimeToRemove = 2.5f; // realtime duration to remove
 
         public void Awake()
         {
@@ -119,13 +127,32 @@ namespace CardMagnifier.MonoBehaviors
 
             if (effectEnabled)
             {
+
                 if (cardIsHighLighted)
                 {
                     interpolateTimer += TimeHandler.deltaTime;
+
+                    if (configDisableCardBobbingEffect)
+                    {
+                        transform.localScale = Vector3.one * 1.15f;
+                    }
+                    if (configDisableCardFlippingEffect)
+                    {
+                        Transform canvas = gameObject.transform.Find("Canvas");
+                        canvas.localEulerAngles = Vector3.zero;
+
+                        CurveAnimation curveAnimation = canvas.gameObject.GetComponent<CurveAnimation>();
+                        curveAnimation.enabled = false;
+                    }
                 }
                 else
                 {
                     interpolateTimer -= TimeHandler.deltaTime;
+
+                    if (configDisableCardBobbingEffect)
+                    {
+                        transform.localScale = Vector3.one * 0.9f;
+                    }
                 }
 
 
@@ -135,8 +162,8 @@ namespace CardMagnifier.MonoBehaviors
                 {
                     SetCardZoom();
                 }
-                // debug
-                else
+                // not selected card discard effect fix/enhancer
+                else if (!configDisableDiscardEffect)
                 {
                     if (!cardIsHighLighted)
                     {
@@ -159,6 +186,14 @@ namespace CardMagnifier.MonoBehaviors
                         {
                             remover.seconds += cardLifeTimeAdd;
                             cardLifeExtended = true;
+                            cardLifeExtendedTime = Time.time;
+                        }
+                    }
+                    else
+                    {
+                        if (Time.time > cardLifeExtendedTime + realTimeToRemove)
+                        {
+                            Destroy(cardBaseParent);
                         }
                     }
                 }

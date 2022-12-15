@@ -9,6 +9,8 @@ using CardMagnifier.MonoBehaviors;
 using HarmonyLib;
 using CardChoiceSpawnUniqueCardPatch.CustomCategories;
 using UnityEngine;
+using UnboundLib.GameModes;
+using System.Collections;
 
 namespace CardMagnifier
 {
@@ -26,7 +28,7 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "CardMagnifier";
-        public const string Version = "0.0.5"; //build #5 / Release 0-1-0
+        public const string Version = "0.0.7"; //build #7 / Release 0-1-0
 
         void Awake()
         {
@@ -39,11 +41,13 @@ namespace CardMagnifier
             // CustomCard.BuildCard<MyCardName>();
             Unbound.RegisterClientSideMod(ModId);
 
-            this.ExecuteAfterSeconds(2.0f, () =>
+            GameModeManager.AddHook(GameModeHooks.HookPlayerPickStart, OnPlayerPickStart);
+
+            this.ExecuteAfterFrames(5, () =>
             {
                 // Debug.Log("[CardMagnifier] Delegate started!");
 
-                GameObject targetCardBase = null;
+                // GameObject targetCardBase = null;
                 GameObject[] gameObjects = Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[];
 
 
@@ -51,35 +55,42 @@ namespace CardMagnifier
                 {
                     foreach (GameObject item in gameObjects)
                     {
-                        // if (item == null) continue;
-                        // if (item.hideFlags == HideFlags.HideAndDontSave)
-                        // {
-                            if (item.name == "CardBase")
-                            {
-                                // Debug.Log("[CardMagnifier] Found it!");
-                                targetCardBase = item;
-                                break;
-                            }
-                        // }
+                        // Attach to all 'card bases' that contain CardVisual
+                        CardVisuals cardVisuals = item.GetComponent<CardVisuals>();
+                        if (cardVisuals != null)
+                        {
+                            // apply mono to card base(s)
+                            // Debug.Log("[CardMagnifier] Found it!");
+
+                            item.AddComponent<CardEnlarger>();
+
+                            // Debug.Log("[CardMagnifier] Component added to xxx!");
+
+                            // targetCardBase = item;
+                            // break;
+                        }
+
                     }
                 }
                 else
                 {
                     // Debug.Log("[CardMagnifier] List is null!");
                 }
-
-                // apply mono to card base(s)
-                if (targetCardBase != null)
-                {
-                    targetCardBase.AddComponent<CardEnlarger>();
-                    // Debug.Log("[CardMagnifier] Component added!");
-                }
+                
             });
         }
 
+        public IEnumerator OnPlayerPickStart(IGameModeHandler gm)
+        {
+            GameObject timerUI = GameObject.Find("TimerUI");
+            if (timerUI != null)
+            {
+                timerUI.transform.localPosition = new Vector3(0.0f, -360.0f, 0.0f);
+            }
+
+            yield break;
+        }
 
     }
-
-
 
 }
