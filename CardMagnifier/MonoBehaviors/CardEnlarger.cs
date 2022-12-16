@@ -6,11 +6,11 @@ using UnityEngine;
 
 using UnboundLib.GameModes;
 using UnboundLib;
+using HarmonyLib;
 
 namespace CardMagnifier.MonoBehaviors
 {
-    // this mono is meant to be attached at vanilla CardBase and potentially customized ones from mods
-    // Card is clone when pick card phase start and offering player, and is destroyed afterward
+    // mono to attach to card spawned during pick phase
 
     public class CardEnlarger : MonoBehaviour
     {
@@ -27,7 +27,7 @@ namespace CardMagnifier.MonoBehaviors
 
         // scale 0-1, 0 = original card pos, 1 = zoom to configured pos
         public static float configPosInterpolateFactor = 1.0f;
-        public static Vector3 configZoomToPos = new Vector3(0.0f, 4.5f, -10.0f);
+        public static Vector3 configZoomToPos = new Vector3(0.0f, 4.0f, -10.0f);
 
         // whether to zoom the entire card to fixed scales or not, instead of relative to its default size when hilighted
         public static bool configZoomAbsoluteEnable = true;
@@ -133,6 +133,11 @@ namespace CardMagnifier.MonoBehaviors
             {
                 cardVisuals = transform.GetComponentInChildren<CardVisuals>();
             }
+
+            // if (isCardPickPhase && !discardEffectEnable && !pickedEffectEnable && !zoomEffectEnabled && CheckIsInTheCardDraw())
+            // {
+            //     EnableCardZoom();
+            // }
         }
 
         public void LateUpdate()
@@ -157,6 +162,11 @@ namespace CardMagnifier.MonoBehaviors
             //         }
             //     }
             // }
+
+            if (CheckCardIsBlacklisted())
+            {
+                return;
+            }
 
             if (zoomEffectEnabled)
             {
@@ -247,6 +257,25 @@ namespace CardMagnifier.MonoBehaviors
             // {
             //     setCardDiscarded();
             // }
+        }
+
+        public bool CheckIsInTheCardDraw()
+        {
+            List<GameObject> spawnedCards = (List<GameObject>)Traverse.Create(CardChoice.instance).Field("spawnedCards").GetValue();
+            if (spawnedCards == null)
+            {
+                return false;
+            }
+            else if (spawnedCards.Count == 0)
+            {
+                return false;
+            }
+            else if (spawnedCards.Contains(cardBaseParent))
+            {
+                return true;
+            }
+            
+            return false;
         }
 
         public void SetupCardEnlarger()

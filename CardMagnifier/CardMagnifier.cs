@@ -28,7 +28,7 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "CardMagnifier";
-        public const string Version = "0.0.19"; //build #19 / Release 0-1-0
+        public const string Version = "0.0.23"; //build #23 / Release 0-1-0
 
         public static GameObject timerUI = null;
 
@@ -46,46 +46,18 @@ namespace CardMagnifier
             GameModeManager.AddHook(GameModeHooks.HookPlayerPickStart, OnPlayerPickStart);
             // GameModeManager.AddHook(GameModeHooks.HookPlayerPickEnd, OnPlayerPickEnd);
 
-            // this.ExecuteAfterFrames(5, () =>
-            // {
-            //     // Debug.Log("[CardMagnifier] Delegate started!");
-            // 
-            //     // GameObject targetCardBase = null;
-            //     GameObject[] gameObjects = Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[];
-            // 
-            // 
-            //     if (gameObjects != null)
-            //     {
-            //         foreach (GameObject item in gameObjects)
-            //         {
-            //             // Attach to all 'card bases' that contain CardVisual
-            //             CardVisuals cardVisuals = item.GetComponent<CardVisuals>();
-            //             if (cardVisuals != null)
-            //             {
-            //                 // apply mono to card base(s)
-            //                 // Debug.Log("[CardMagnifier] Found it!");
-            // 
-            //                 item.AddComponent<CardEnlarger>();
-            // 
-            //                 // Debug.Log("[CardMagnifier] Component added to xxx!");
-            // 
-            //                 // targetCardBase = item;
-            //                 // break;
-            //             }
-            // 
-            //         }
-            //     }
-            //     else
-            //     {
-            //         // Debug.Log("[CardMagnifier] List is null!");
-            //     }
-            //     
-            // });
+        }
+
+        public void Update()
+        {
+            
         }
 
         public IEnumerator OnPlayerPickStart(IGameModeHandler gm)
         {
             UnityEngine.Debug.Log("[CardMagnifier] Player Picking Started");
+
+            CardEnlarger.isCardPickPhase = true;
 
             if (timerUI == null)
             {
@@ -104,8 +76,6 @@ namespace CardMagnifier
             {
                 timerUI.transform.localPosition = new Vector3(0.0f, -360.0f, 0.0f);
             }
-        
-            // CardEnlarger.isCardPickPhase = true;
         
             yield break;
         }

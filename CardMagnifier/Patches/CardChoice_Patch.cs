@@ -6,23 +6,60 @@ using UnboundLib;
 
 using CardMagnifier.MonoBehaviors;
 
-namespace GearUpCards.Patches
+namespace CardMagnifier.Patches
 {
+    [HarmonyPatch(typeof(CardInfo))]
+    class CardInfo_Patch
+    {
+        public static GameObject selectedCard;
+
+        [HarmonyPrefix]
+        [HarmonyPriority(Priority.Last)]
+        [HarmonyPatch("RPCA_ChangeSelected")]
+        static void AddCardEnlarger(CardInfo __instance, bool setSelected)
+        {
+            if (setSelected == false)
+            {
+                return;
+            }
+        
+            selectedCard = __instance.transform.root.gameObject;
+            // UnityEngine.Debug.Log("[CardInfo_Patch] RPCA_ChangedSelected: " + selectedCard.name);
+        
+            CardEnlarger cardEnlarger;
+            cardEnlarger = selectedCard.GetComponent<CardEnlarger>();
+        
+            if (cardEnlarger == null)
+            {
+                cardEnlarger = selectedCard.AddComponent<CardEnlarger>();
+                cardEnlarger.EnableCardZoom();
+            }
+        }
+
+    }
+
     [HarmonyPatch(typeof(CardChoice))]
     class CardChoice_Patch
     {
-        [HarmonyPostfix]
-        [HarmonyPriority(Priority.Last)]
-        [HarmonyPatch("SpawnUniqueCard")]
-        static void AddComponentToSpawnedCard(ref GameObject __result)
-        {
-            CardVisuals cardVisuals = __result.transform.GetComponentInChildren<CardVisuals>();
-            CardEnlarger pickedCardEnlarger = cardVisuals.gameObject.transform.parent.gameObject.AddComponent<CardEnlarger>();
-            pickedCardEnlarger.EnableCardZoom();
+        // darn it CardChoice.SpawnUniqueCard only be executed by the PICKING player and sync to other players...???
 
-            CardEnlarger.isCardPickPhase = true;
-            // UnityEngine.Debug.Log("[CardChoice_Patch] AddComponentToSpawnedCard Done");
-        }
+        // [HarmonyPostfix]
+        // [HarmonyPriority(Priority.Last)]
+        // [HarmonyPatch("SpawnUniqueCard")]
+        
+
+        // [HarmonyPostfix]
+        // [HarmonyPriority(Priority.Last)]
+        // [HarmonyPatch("Spawn")]
+        // static void AddComponentToSpawnedCard(ref GameObject __result)
+        // {
+        //     CardVisuals cardVisuals = __result.transform.GetComponentInChildren<CardVisuals>();
+        //     CardEnlarger pickedCardEnlarger = cardVisuals.gameObject.transform.parent.gameObject.AddComponent<CardEnlarger>();
+        //     pickedCardEnlarger.EnableCardZoom();
+        // 
+        //     CardEnlarger.isCardPickPhase = true;
+        //     UnityEngine.Debug.Log("[CardChoice_Patch] AddComponentToSpawnedCard Done");
+        // }
 
         [HarmonyPrefix]
         [HarmonyPriority(Priority.Last)]
@@ -40,12 +77,19 @@ namespace GearUpCards.Patches
             {
                 if (item == pickedCard)
                 {
-                    pickedCardEnlarger.SetCardPicked();
+                    if (pickedCardEnlarger != null)
+                    {
+                        pickedCardEnlarger.SetCardPicked();
+                    }
                     continue;
                 }
                 else
                 {
-                    item.transform.GetComponentInChildren<CardEnlarger>().setCardDiscarded();
+                    CardEnlarger cardEnlarger = item.transform.GetComponentInChildren<CardEnlarger>();
+                    if (cardEnlarger != null)
+                    {
+                        cardEnlarger.setCardDiscarded();
+                    }
                 }
             }
 
