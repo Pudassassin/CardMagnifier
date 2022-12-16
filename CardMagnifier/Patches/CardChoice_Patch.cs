@@ -17,22 +17,42 @@ namespace GearUpCards.Patches
         static void AddComponentToSpawnedCard(ref GameObject __result)
         {
             CardVisuals cardVisuals = __result.transform.GetComponentInChildren<CardVisuals>();
-            cardVisuals.gameObject.AddComponent<CardEnlarger>();
+            CardEnlarger pickedCardEnlarger = cardVisuals.gameObject.transform.parent.gameObject.AddComponent<CardEnlarger>();
+            pickedCardEnlarger.EnableCardZoom();
+
+            CardEnlarger.isCardPickPhase = true;
+            // UnityEngine.Debug.Log("[CardChoice_Patch] AddComponentToSpawnedCard Done");
         }
 
         [HarmonyPrefix]
         [HarmonyPriority(Priority.Last)]
-        [HarmonyPatch("DoPick")]
-        static bool RemoveComponentToPickedCard(ref List<GameObject> ___spawnedCards, int picksToSet)
+        [HarmonyPatch("IDoEndPick")]
+        static bool RemoveComponentToPickedCard(ref List<GameObject> ___spawnedCards, GameObject pickedCard, int theInt)
         {
-            if (picksToSet < 0 || picksToSet >= ___spawnedCards.Count)
-            {
-                return true;
-            }
-            GameObject targetCard = ___spawnedCards[picksToSet];
-            CardEnlarger cardEnlarger = targetCard.transform.GetComponentInChildren<CardEnlarger>();
-            cardEnlarger.effectEnabled = false;
+            // if (theInt < 0 || theInt >= ___spawnedCards.Count)
+            // {
+            //     return true;
+            // }
+            // GameObject pickedCard = ___spawnedCards[theInt];
 
+            CardEnlarger pickedCardEnlarger = pickedCard.transform.GetComponentInChildren<CardEnlarger>();
+            foreach (GameObject item in ___spawnedCards)
+            {
+                if (item == pickedCard)
+                {
+                    pickedCardEnlarger.SetCardPicked();
+                    continue;
+                }
+                else
+                {
+                    item.transform.GetComponentInChildren<CardEnlarger>().setCardDiscarded();
+                }
+            }
+
+            // pickedCardEnlarger.zoomEffectEnabled = false;
+
+            CardEnlarger.isCardPickPhase = false;
+            // UnityEngine.Debug.Log("[CardChoice_Patch] RemoveComponentToPickedCard Done");
             return true;
         }
 

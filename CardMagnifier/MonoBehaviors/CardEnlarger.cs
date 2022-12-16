@@ -5,6 +5,7 @@ using System.Text;
 using UnityEngine;
 
 using UnboundLib.GameModes;
+using UnboundLib;
 
 namespace CardMagnifier.MonoBehaviors
 {
@@ -26,7 +27,7 @@ namespace CardMagnifier.MonoBehaviors
 
         // scale 0-1, 0 = original card pos, 1 = zoom to configured pos
         public static float configPosInterpolateFactor = 1.0f;
-        public static Vector3 configZoomToPos = new Vector3(0.0f, 3.5f, -10.0f);
+        public static Vector3 configZoomToPos = new Vector3(0.0f, 4.5f, -10.0f);
 
         // whether to zoom the entire card to fixed scales or not, instead of relative to its default size when hilighted
         public static bool configZoomAbsoluteEnable = true;
@@ -52,16 +53,16 @@ namespace CardMagnifier.MonoBehaviors
         // Discarded card effect variables
         public static float initialXSpeedMin = -2.0f;
         public static float initialXSpeedMax = 2.0f;
-        public static float initialYSpeedMin = 2.5f;
-        public static float initialYSpeedMax = -1.5f;
+        public static float initialYSpeedMin = 7.5f;
+        public static float initialYSpeedMax = 5.0f;
         public static float initialYTorqueMin = -180.0f;
         public static float initialYTorqueMax = 180.0f;
         public static float initialZTorqueMin = -45.0f;
         public static float initialZTorqueMax = 45.0f;
-        public static float GravityMin = 4.5f;
+        public static float GravityMin = 7.5f;
         public static float GravityMax = 10.0f;
 
-        public static float DeltaTimeScale = 1.0f;
+        public static float DeltaTimeScale = 2.5f;
 
         public Vector3 randomizedVelocity = Vector3.zero;
         public Vector3 randomizedTorque = Vector3.zero;
@@ -71,11 +72,22 @@ namespace CardMagnifier.MonoBehaviors
 
         public Vector3 tPosition, tRotation;
 
+        // Picked card effect variable
+        public static Vector3 finalCardPos = new Vector3(0.0f, -9.0f, 0.0f);
+        public static float timeToVanish = 0.25f;
+
+        public float vanishTimer = 0.0f;
+        public Vector3 vanishingCardPos, vanishingCardScale;
+
         // Inner variables
         public const float processTickTime = 0.0f;
         public float processTimer = 0.0f;
         public float interpolateTimer = 0.0f;
-        public bool effectEnabled = false; // should only be true during card picking phase
+
+        public bool zoomEffectEnabled = false;
+        public bool discardEffectEnable = false;
+        public bool pickedEffectEnable = false;
+
         public bool cardIsHighLighted = false;
         public bool cardPrevStateSaved = false;
 
@@ -86,9 +98,9 @@ namespace CardMagnifier.MonoBehaviors
 
         // debug
         private bool cardLifeExtended = false;
-        public static float cardLifeTimeAdd = 0.2f;
+        public static float cardLifeTimeAdd = 0.0f;
         public float cardLifeExtendedTime = 0.0f; // realtime marker
-        public static float realTimeToRemove = 1.0f; // realtime duration to remove
+        public static float realTimeToRemove = 1.5f; // realtime duration to remove
 
         public void Awake()
         {
@@ -97,8 +109,9 @@ namespace CardMagnifier.MonoBehaviors
 
         public void Start()
         {
-            cardVisuals = GetComponent<CardVisuals>();
-            cardBaseParent = transform.parent.gameObject;
+            cardVisuals = transform.GetComponentInChildren<CardVisuals>();
+            // cardBaseParent = transform.parent.gameObject;
+            cardBaseParent = transform.gameObject;
 
             Action<bool> action = GetToggleSelectionAction();
             cardVisuals.toggleSelectionAction = (Action<bool>)Delegate.Combine(cardVisuals.toggleSelectionAction, action);
@@ -110,134 +123,139 @@ namespace CardMagnifier.MonoBehaviors
             // {
             //     cardBaseParent = transform.parent.gameObject;
             //     SetupCardEnlarger();
-            //     effectEnabled = true;
+            //     zoomEffectEnabled = true;
             // }
+        }
+
+        public void Update()
+        {
+            if (cardVisuals == null)
+            {
+                cardVisuals = transform.GetComponentInChildren<CardVisuals>();
+            }
         }
 
         public void LateUpdate()
         {
             // if (cardBaseParent != null && CardChoice.instance.IsPicking)
-            if (CardChoice.instance.IsPicking)
-            {
-                if (CheckCardIsBlacklisted())
-                {
-                    // leave it disabled
-                    // Destroy(this);
-                }
-                else
-                {
-                    // processTimer += TimeHandler.deltaTime;
+            // if (CardChoice.instance.IsPicking)
+            // {
+            //     if (CheckCardIsBlacklisted())
+            //     {
+            //         // leave it disabled
+            //         // Destroy(this);
+            //     }
+            //     else
+            //     {
+            //         // processTimer += TimeHandler.deltaTime;
+            // 
+            //         zoomEffectEnabled = true;
+            //         
+            //         if (!cardPrevStateSaved)
+            //         {
+            //             SetupCardEnlarger();
+            //         }
+            //     }
+            // }
 
-                    effectEnabled = true;
-                    
-                    if (!cardPrevStateSaved)
-                    {
-                        SetupCardEnlarger();
-                    }
-                }
-            }
-
-            if (effectEnabled)
+            if (zoomEffectEnabled)
             {
                 if (cardIsHighLighted)
                 {
                     interpolateTimer += TimeHandler.deltaTime;
 
-                    if (CardChoice.instance.IsPicking)
+                    if (configDisableCardBobbingEffect)
                     {
-                        if (configDisableCardBobbingEffect)
-                        {
-                            transform.localScale = Vector3.one * 1.15f;
-                        }
+                        cardVisuals.transform.localScale = Vector3.one * 1.15f;
+                    }
 
-                        // wip disable card flip
-                        if (configDisableCardFlippingEffect)
-                        {
-                            Transform canvas = gameObject.transform.Find("Canvas");
-                            Vector3 temp = canvas.localEulerAngles;
-                            canvas.localEulerAngles = new Vector3(temp.x, 0.0f, temp.z);
+                    // wip disable card flip
+                    if (configDisableCardFlippingEffect)
+                    {
+                        Transform canvas = cardVisuals.transform.Find("Canvas");
+                        Vector3 temp = canvas.localEulerAngles;
+                        canvas.localEulerAngles = new Vector3(temp.x, 0.0f, temp.z);
 
-                            RectTransform rectTransform = canvas.gameObject.GetComponent<RectTransform>();
-                            temp = rectTransform.localEulerAngles;
-                            rectTransform.localEulerAngles = new Vector3(temp.x, 0.0f, -1 * temp.z);
+                        RectTransform rectTransform = canvas.gameObject.GetComponent<RectTransform>();
+                        temp = rectTransform.localEulerAngles;
+                        rectTransform.localEulerAngles = new Vector3(temp.x, 0.0f, -1 * temp.z);
 
-                            // CurveAnimation curveAnimation = canvas.gameObject.GetComponent<CurveAnimation>();
-                            // curveAnimation.stopAllAnimations = true;
-                        }
+                        // CurveAnimation curveAnimation = canvas.gameObject.GetComponent<CurveAnimation>();
+                        // curveAnimation.stopAllAnimations = true;
                     }
                 }
                 else
                 {
                     interpolateTimer -= TimeHandler.deltaTime;
 
-                    if (CardChoice.instance.IsPicking)
+                    if (configDisableCardBobbingEffect)
                     {
-                        if (configDisableCardBobbingEffect)
-                        {
-                            transform.localScale = Vector3.one * 0.9f;
-                        }
+                        transform.localScale = Vector3.one * 0.9f;
                     }
                 }
 
 
                 interpolateTimer = Mathf.Clamp(interpolateTimer, 0.0f, configInterpolateTime);
+                SetCardZoom();
+            }
 
-                if (CardChoice.instance.IsPicking)
+            // picked card effect
+            else if (pickedEffectEnable)
+            {
+                vanishTimer += TimeHandler.deltaTime;
+
+                cardBaseParent.transform.localPosition = Vector3.Lerp(vanishingCardPos, finalCardPos, vanishTimer / timeToVanish);
+                cardBaseParent.transform.localScale = Vector3.Lerp(vanishingCardScale, Vector3.zero, vanishTimer / timeToVanish);
+            }
+
+            // not picked card discard effect fix/enhancer
+            else if (discardEffectEnable && !configDisableDiscardEffect)
+            {
+                if (!cardIsHighLighted)
                 {
-                    SetCardZoom();
+                    // tPosition += randomizedVelocity * TimeHandler.deltaTime;
+                    // tRotation += randomizedTorque * TimeHandler.deltaTime;
+                    // randomizedVelocity.y -= randomizedGravity * TimeHandler.deltaTime;
+                    // 
+                    // cardBaseParent.transform.position = tPosition;
+                    // cardBaseParent.transform.localEulerAngles = tRotation;
+
+                    cardBaseParent.transform.position += randomizedVelocity * TimeHandler.deltaTime * DeltaTimeScale;
+                    cardBaseParent.transform.localEulerAngles += randomizedTorque * TimeHandler.deltaTime * DeltaTimeScale;
+                    randomizedVelocity.y -= randomizedGravity * TimeHandler.deltaTime * DeltaTimeScale;
                 }
-                // not selected card discard effect fix/enhancer
+
+                if (!cardLifeExtended)
+                {
+                    RemoveAfterSeconds remover = cardBaseParent.GetComponent<RemoveAfterSeconds>();
+                    if (remover != null)
+                    {
+                        remover.seconds += cardLifeTimeAdd;
+                        cardLifeExtended = true;
+                        cardLifeExtendedTime = Time.time;
+                    }
+                }
                 else
                 {
-                    if (!cardIsHighLighted)
+                    if (Time.time > cardLifeExtendedTime + realTimeToRemove)
                     {
-                        if (!configDisableDiscardEffect)
-                        {
-                            SetupRandomizedCardDiscard();
-
-                            // tPosition += randomizedVelocity * TimeHandler.deltaTime;
-                            // tRotation += randomizedTorque * TimeHandler.deltaTime;
-                            // randomizedVelocity.y -= randomizedGravity * TimeHandler.deltaTime;
-                            // 
-                            // cardBaseParent.transform.position = tPosition;
-                            // cardBaseParent.transform.localEulerAngles = tRotation;
-
-                            cardBaseParent.transform.position += randomizedVelocity * TimeHandler.deltaTime * DeltaTimeScale;
-                            cardBaseParent.transform.localEulerAngles += randomizedTorque * TimeHandler.deltaTime * DeltaTimeScale;
-                            randomizedVelocity.y -= randomizedGravity * TimeHandler.deltaTime * DeltaTimeScale;
-                        }
-                    }
-                    else
-                    {
-                        // Destroy(this);
-                    }
-
-                    if (!cardLifeExtended)
-                    {
-                        RemoveAfterSeconds remover = transform.parent.GetComponent<RemoveAfterSeconds>();
-                        if (remover != null)
-                        {
-                            remover.seconds += cardLifeTimeAdd;
-                            cardLifeExtended = true;
-                            cardLifeExtendedTime = Time.time;
-                        }
-                    }
-                    else
-                    {
-                        if (Time.time > cardLifeExtendedTime + realTimeToRemove)
-                        {
-                            Destroy(cardBaseParent);
-                        }
+                        Destroy(cardBaseParent);
                     }
                 }
             }
+            // else
+            // {
+            //     setCardDiscarded();
+            // }
         }
 
         public void SetupCardEnlarger()
         {
-            cardPreviousPos = transform.parent.transform.position; //world space position
-            cardPreviousRotation = transform.parent.transform.localEulerAngles;
-            cardPreviousScale = transform.parent.transform.localScale;
+            if (cardPrevStateSaved) return;
+
+            cardPreviousPos = cardBaseParent.transform.position; //world space position
+            cardPreviousRotation = cardBaseParent.transform.localEulerAngles;
+            cardPreviousScale = cardBaseParent.transform.localScale;
 
             cardZoomToPos = Vector3.Lerp(cardPreviousPos, configZoomToPos, configPosInterpolateFactor);
             if (configZoomAbsoluteEnable)
@@ -319,11 +337,11 @@ namespace CardMagnifier.MonoBehaviors
         // {
         //     if (CheckCardIsBlacklisted())
         //     {
-        //         effectEnabled = false;
+        //         zoomEffectEnabled = false;
         //     }
         //     else
         //     {
-        //         effectEnabled = true;
+        //         zoomEffectEnabled = true;
         //     }
         //     yield break;
         // }
@@ -359,7 +377,7 @@ namespace CardMagnifier.MonoBehaviors
                 // hack solution
                 // CardEnlarger.isCardPickPhase = true;
 
-                if (effectEnabled)
+                if (zoomEffectEnabled)
                 {
                     if (cardBaseParent == null)
                     {
@@ -367,14 +385,50 @@ namespace CardMagnifier.MonoBehaviors
                         return;
                     }
 
-                    if (!cardPrevStateSaved)
-                    {
-                        SetupCardEnlarger();
-                    }
+                    SetupCardEnlarger();
 
                     cardIsHighLighted = highLightState;
                 }
             };
+        }
+
+        public void EnableCardZoom()
+        {
+            this.ExecuteAfterFrames(5, () =>
+            {
+                zoomEffectEnabled = true;
+                pickedEffectEnable = false;
+                discardEffectEnable = false;
+
+                SetupCardEnlarger();
+
+                if (cardVisuals != null)
+                {
+                    if (cardVisuals.isSelected)
+                    {
+                        cardIsHighLighted = true;
+                    }
+                }
+            });
+        }
+
+        public void SetCardPicked()
+        {
+            zoomEffectEnabled = false;
+            pickedEffectEnable = true;
+            discardEffectEnable = false;
+
+            vanishingCardPos = cardBaseParent.transform.localPosition;
+            vanishingCardScale = cardBaseParent.transform.localScale;
+        }
+
+        public void setCardDiscarded()
+        {
+            if (pickedEffectEnable) return;
+            zoomEffectEnabled = false;
+            discardEffectEnable = true;
+
+            SetupRandomizedCardDiscard();
         }
 
         public void OnDestroy()

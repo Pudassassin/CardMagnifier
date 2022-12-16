@@ -28,7 +28,9 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "CardMagnifier";
-        public const string Version = "0.0.13"; //build #13 / Release 0-1-0
+        public const string Version = "0.0.19"; //build #19 / Release 0-1-0
+
+        public static GameObject timerUI = null;
 
         void Awake()
         {
@@ -84,8 +86,21 @@ namespace CardMagnifier
         public IEnumerator OnPlayerPickStart(IGameModeHandler gm)
         {
             UnityEngine.Debug.Log("[CardMagnifier] Player Picking Started");
-            GameObject timerUI = GameObject.Find("TimerUI");
-            if (timerUI != null)
+
+            if (timerUI == null)
+            {
+                GameObject[] gameObjects = Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[];
+                foreach (GameObject item in gameObjects)
+                {
+                    if (item.name == "TimerUI(Clone)")
+                    {
+                        timerUI = item;
+                        UnityEngine.Debug.Log("[CardMagnifier] Found TimerUI(Clone)");
+                        break;
+                    }
+                }
+            }
+            else
             {
                 timerUI.transform.localPosition = new Vector3(0.0f, -360.0f, 0.0f);
             }
