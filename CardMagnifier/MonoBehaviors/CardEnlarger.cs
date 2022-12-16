@@ -61,11 +61,13 @@ namespace CardMagnifier.MonoBehaviors
         public static float GravityMin = 4.5f;
         public static float GravityMax = 10.0f;
 
-        public static float DeltaTimeScale = 300.0f;
+        public static float DeltaTimeScale = 1.0f;
 
         public Vector3 randomizedVelocity = Vector3.zero;
         public Vector3 randomizedTorque = Vector3.zero;
         public float randomizedGravity = 0.0f;
+
+        public bool isCardDiscarded = false;
 
         public Vector3 tPosition, tRotation;
 
@@ -76,16 +78,17 @@ namespace CardMagnifier.MonoBehaviors
         public bool effectEnabled = false; // should only be true during card picking phase
         public bool cardIsHighLighted = false;
         public bool cardPrevStateSaved = false;
-        public bool cardPickEnded = false;
+
+        public static bool isCardPickPhase = false;
 
         private CardVisuals cardVisuals = null;
         private GameObject cardBaseParent = null;
 
         // debug
         private bool cardLifeExtended = false;
-        public static float cardLifeTimeAdd = 0.5f;
+        public static float cardLifeTimeAdd = 0.2f;
         public float cardLifeExtendedTime = 0.0f; // realtime marker
-        public static float realTimeToRemove = 2.5f; // realtime duration to remove
+        public static float realTimeToRemove = 1.0f; // realtime duration to remove
 
         public void Awake()
         {
@@ -101,20 +104,29 @@ namespace CardMagnifier.MonoBehaviors
             cardVisuals.toggleSelectionAction = (Action<bool>)Delegate.Combine(cardVisuals.toggleSelectionAction, action);
 
             // GameModeManager.AddHook(GameModeHooks.HookPlayerPickEnd, OnPlayerPickEnd);
+            
+            // wip patch
+            // if (cardVisuals.isSelected)
+            // {
+            //     cardBaseParent = transform.parent.gameObject;
+            //     SetupCardEnlarger();
+            //     effectEnabled = true;
+            // }
         }
 
-        public void Update()
+        public void LateUpdate()
         {
-            if (cardBaseParent != null && CardChoice.instance.IsPicking)
+            // if (cardBaseParent != null && CardChoice.instance.IsPicking)
+            if (CardChoice.instance.IsPicking)
             {
                 if (CheckCardIsBlacklisted())
                 {
+                    // leave it disabled
                     // Destroy(this);
-
                 }
                 else
                 {
-                    processTimer += TimeHandler.deltaTime;
+                    // processTimer += TimeHandler.deltaTime;
 
                     effectEnabled = true;
                     
@@ -127,31 +139,43 @@ namespace CardMagnifier.MonoBehaviors
 
             if (effectEnabled)
             {
-
                 if (cardIsHighLighted)
                 {
                     interpolateTimer += TimeHandler.deltaTime;
 
-                    if (configDisableCardBobbingEffect)
+                    if (CardChoice.instance.IsPicking)
                     {
-                        transform.localScale = Vector3.one * 1.15f;
-                    }
-                    if (configDisableCardFlippingEffect)
-                    {
-                        Transform canvas = gameObject.transform.Find("Canvas");
-                        canvas.localEulerAngles = Vector3.zero;
+                        if (configDisableCardBobbingEffect)
+                        {
+                            transform.localScale = Vector3.one * 1.15f;
+                        }
 
-                        CurveAnimation curveAnimation = canvas.gameObject.GetComponent<CurveAnimation>();
-                        curveAnimation.enabled = false;
+                        // wip disable card flip
+                        if (configDisableCardFlippingEffect)
+                        {
+                            Transform canvas = gameObject.transform.Find("Canvas");
+                            Vector3 temp = canvas.localEulerAngles;
+                            canvas.localEulerAngles = new Vector3(temp.x, 0.0f, temp.z);
+
+                            RectTransform rectTransform = canvas.gameObject.GetComponent<RectTransform>();
+                            temp = rectTransform.localEulerAngles;
+                            rectTransform.localEulerAngles = new Vector3(temp.x, 0.0f, -1 * temp.z);
+
+                            // CurveAnimation curveAnimation = canvas.gameObject.GetComponent<CurveAnimation>();
+                            // curveAnimation.stopAllAnimations = true;
+                        }
                     }
                 }
                 else
                 {
                     interpolateTimer -= TimeHandler.deltaTime;
 
-                    if (configDisableCardBobbingEffect)
+                    if (CardChoice.instance.IsPicking)
                     {
-                        transform.localScale = Vector3.one * 0.9f;
+                        if (configDisableCardBobbingEffect)
+                        {
+                            transform.localScale = Vector3.one * 0.9f;
+                        }
                     }
                 }
 
@@ -163,20 +187,29 @@ namespace CardMagnifier.MonoBehaviors
                     SetCardZoom();
                 }
                 // not selected card discard effect fix/enhancer
-                else if (!configDisableDiscardEffect)
+                else
                 {
                     if (!cardIsHighLighted)
                     {
-                        // tPosition += randomizedVelocity * TimeHandler.deltaTime;
-                        // tRotation += randomizedTorque * TimeHandler.deltaTime;
-                        // randomizedVelocity.y -= randomizedGravity * TimeHandler.deltaTime;
-                        // 
-                        // cardBaseParent.transform.position = tPosition;
-                        // cardBaseParent.transform.localEulerAngles = tRotation;
+                        if (!configDisableDiscardEffect)
+                        {
+                            SetupRandomizedCardDiscard();
 
-                        cardBaseParent.transform.position += randomizedVelocity * TimeHandler.deltaTime * DeltaTimeScale;
-                        cardBaseParent.transform.localEulerAngles += randomizedTorque * TimeHandler.deltaTime * DeltaTimeScale;
-                        randomizedVelocity.y -= randomizedGravity * TimeHandler.deltaTime * DeltaTimeScale;
+                            // tPosition += randomizedVelocity * TimeHandler.deltaTime;
+                            // tRotation += randomizedTorque * TimeHandler.deltaTime;
+                            // randomizedVelocity.y -= randomizedGravity * TimeHandler.deltaTime;
+                            // 
+                            // cardBaseParent.transform.position = tPosition;
+                            // cardBaseParent.transform.localEulerAngles = tRotation;
+
+                            cardBaseParent.transform.position += randomizedVelocity * TimeHandler.deltaTime * DeltaTimeScale;
+                            cardBaseParent.transform.localEulerAngles += randomizedTorque * TimeHandler.deltaTime * DeltaTimeScale;
+                            randomizedVelocity.y -= randomizedGravity * TimeHandler.deltaTime * DeltaTimeScale;
+                        }
+                    }
+                    else
+                    {
+                        // Destroy(this);
                     }
 
                     if (!cardLifeExtended)
@@ -260,6 +293,8 @@ namespace CardMagnifier.MonoBehaviors
 
         public void SetupRandomizedCardDiscard()
         {
+            if (isCardDiscarded) return;
+
             randomizedGravity = UnityEngine.Random.Range(GravityMin, GravityMax);
             randomizedVelocity = new Vector3
             (
@@ -276,6 +311,8 @@ namespace CardMagnifier.MonoBehaviors
 
             tPosition = cardBaseParent.transform.position;
             tRotation = cardBaseParent.transform.localEulerAngles;
+
+            isCardDiscarded = true;
         }
 
         // public IEnumerator OnPlayerPickStart(IGameModeHandler gm)
@@ -293,10 +330,13 @@ namespace CardMagnifier.MonoBehaviors
 
         // public IEnumerator OnPlayerPickEnd(IGameModeHandler gm)
         // {
-        //     cardPickEnded = true;
+        //     // cardPickEnded = true;
         // 
-        //     SetupRandomizedCardDiscard();
-        // 
+        //     if (!cardIsHighLighted)
+        //     {
+        //         SetupRandomizedCardDiscard();
+        //     }
+        //     
         //     yield break;
         // }
 
@@ -316,6 +356,9 @@ namespace CardMagnifier.MonoBehaviors
         {
             return delegate (bool highLightState)
             {
+                // hack solution
+                // CardEnlarger.isCardPickPhase = true;
+
                 if (effectEnabled)
                 {
                     if (cardBaseParent == null)
