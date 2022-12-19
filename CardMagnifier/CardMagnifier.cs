@@ -34,7 +34,7 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "Card Magnifier";
-        private const string Version = "0.0.23"; //build #23 / Release 0-1-0
+        private const string Version = "0.1.0"; //build #26 / Release 0-1-0
 
         private const string CompatibilityModName = "CardMagnifier";
 
@@ -212,16 +212,21 @@ namespace CardMagnifier
         {
             get
             {
-                return GetFloat("CardBarPreviewYOveride", 1.35f);
+                return GetFloat("CardBarPreviewScaleOveride", 1.35f);
             }
             set
             {
-                SetFloat("CardBarPreviewYOveride", value);
+                SetFloat("CardBarPreviewScaleOveride", value);
             }
         }
 
+        public const float RealtimeToRefresh = 0.05f;
+        public static float RealtimeLastRefreshed;
+
         public static bool CardZoomDemoMode = false;
         public static bool CardBarPreviewDemoMode = false;
+
+        public static int PickTimerSearchCount = 5;
 
         internal static Dictionary<string, List<Toggle>> TogglesToSync = new Dictionary<string, List<Toggle>>();
         internal static Dictionary<string, List<Slider>> SlidersToSync = new Dictionary<string, List<Slider>>();
@@ -332,6 +337,33 @@ namespace CardMagnifier
             foreach (Slider slider in SlidersToSync["CardBarPreviewXOveride"]) { slider.value = CardBarPreviewXOveride; }
             foreach (Slider slider in SlidersToSync["CardBarPreviewYOveride"]) { slider.value = CardBarPreviewYOveride; }
             foreach (Slider slider in SlidersToSync["CardBarPreviewScaleOveride"]) { slider.value = CardBarPreviewScaleOveride; }
+
+            if (recurse > 0) { SyncOptionsMenus(recurse - 1); }
+        }
+
+        private static bool RefreshCheck()
+        {
+            if (Time.time > RealtimeLastRefreshed + RealtimeToRefresh)
+            {
+                RealtimeLastRefreshed = Time.time;
+                return true;
+            }
+
+            return false;
+        }
+        private static void UpdateAndRefreshCardZoom()
+        {
+            if (!RefreshCheck()) return;
+
+            CardEnlargerDemo.DemoCardZoomRefresh();
+            // SyncOptionsMenus();
+        }
+        private static void UpdateAndRefreshCardBar()
+        {
+            if (!RefreshCheck()) return;
+
+            CardEnlargerDemo.DemoCardBarPreviewRefresh();
+            // SyncOptionsMenus();
         }
 
         private static void NewGUI(GameObject menu)
@@ -343,10 +375,13 @@ namespace CardMagnifier
 
             GameObject presetMenu = MenuHandler.CreateMenu("Presets", () => { }, menu, 60, true, true, menu.transform.parent.gameObject);
             PresetsMenu(presetMenu);
+
             GameObject cardZoomSetting = MenuHandler.CreateMenu("Card Zoom Setting", () => { }, menu, 60, true, true, menu.transform.parent.gameObject);
             CardZoomSetting(cardZoomSetting);
+
             GameObject cardBarSetting = MenuHandler.CreateMenu("CardBar Preview Setting", () => { }, menu, 60, true, true, menu.transform.parent.gameObject);
             CardBarSetting(cardBarSetting);
+
             MenuHandler.CreateText(" ", menu, out TextMeshProUGUI _, 30);
         }
         private static void PresetsMenu(GameObject menu)
@@ -366,15 +401,19 @@ namespace CardMagnifier
                 CardZoomDemoMode = !CardZoomDemoMode;
             }
             MenuHandler.CreateButton("Toggle Demo", menu, ToggleDemo, 30);
+            MenuHandler.CreateText("RMB-drag to move demo card around, NUMPAD+/- to scale \'starting size\', NUMPAD* to reset to default scale.", menu, out TextMeshProUGUI _, 20);
+            MenuHandler.CreateText(" ", menu, out TextMeshProUGUI _, 30);
 
             // 'go back' events
             menu.GetComponentInChildren<GoBack>(true).goBackEvent.AddListener(delegate ()
             {
                 CardZoomDemoMode = false;
+                SyncOptionsMenus();
             });
             menu.transform.Find("Group/Back").gameObject.GetComponent<Button>().onClick.AddListener(delegate ()
             {
                 CardZoomDemoMode = false;
+                SyncOptionsMenus();
             });
         }
         private static void CardZoomSetting(GameObject menu)
@@ -385,29 +424,26 @@ namespace CardMagnifier
 
             void CardToZoomPointFactorChanged(float val)
             {
-                CardToZoomPointFactor = val;
-                CardEnlargerDemo.DemoCardZoomRefresh();
-                SyncOptionsMenus();
+                CardToZoomPointFactor = (float)val;
+                UpdateAndRefreshCardZoom();
             }
             MenuHandler.CreateSlider("Card-to-ZoomPoint Position", menu, 30, 0.0f, 1.0f, CardToZoomPointFactor, CardToZoomPointFactorChanged, out Slider slider1, false, color: hardChangeColor);
-            SlidersToSync["MaxNumberOfParticles"].Add(slider1);
+            SlidersToSync["CardToZoomPointFactor"].Add(slider1);
 
             MenuHandler.CreateText("ZoomPoint Position:", menu, out TextMeshProUGUI _, 30);
 
             void ZoomPointXOffsetChanged(float val)
             {
-                ZoomPointXOffset = val;
-                CardEnlargerDemo.DemoCardZoomRefresh();
-                SyncOptionsMenus();
+                ZoomPointXOffset = (float)val;
+                UpdateAndRefreshCardZoom();
             }
             MenuHandler.CreateSlider("X From Center", menu, 30, -50.0f, 50.0f, ZoomPointXOffset, ZoomPointXOffsetChanged, out Slider slider2, false, color: hardChangeColor);
             SlidersToSync["ZoomPointXOffset"].Add(slider2);
 
             void ZoomPointYOffsetChanged(float val)
             {
-                ZoomPointYOffset = val;
-                CardEnlargerDemo.DemoCardZoomRefresh();
-                SyncOptionsMenus();
+                ZoomPointYOffset = (float)val;
+                UpdateAndRefreshCardZoom();
             }
             MenuHandler.CreateSlider("Y From Center", menu, 30, -25.0f, 25.0f, ZoomPointYOffset, ZoomPointYOffsetChanged, out Slider slider3, false, color: hardChangeColor);
             SlidersToSync["ZoomPointYOffset"].Add(slider3);
@@ -416,63 +452,58 @@ namespace CardMagnifier
 
             void ZoomScaleChanged(float val)
             {
-                ZoomScale = val;
-                CardEnlargerDemo.DemoCardZoomRefresh();
-                SyncOptionsMenus();
+                ZoomScale = (float)val;
+                UpdateAndRefreshCardZoom();
             }
             MenuHandler.CreateSlider("Card Zoom Scale", menu, 30, 0.5f, 5.0f, ZoomScale, ZoomScaleChanged, out Slider slider4, false, color: easyChangeColor);
             SlidersToSync["ZoomScale"].Add(slider3);
 
             void ZoomToAbsoluteSizeChanged(bool val)
             {
-                ZoomToAbsoluteSize = val;
-                CardEnlargerDemo.DemoCardZoomRefresh();
-                SyncOptionsMenus();
+                ZoomToAbsoluteSize = (bool)val;
+                UpdateAndRefreshCardZoom();
             }
             Toggle toggle1 = MenuHandler.CreateToggle(ZoomToAbsoluteSize, "Zoom Card to Fixed Size", menu, ZoomToAbsoluteSizeChanged, 20, color: easyChangeColor).GetComponent<Toggle>();
-            TogglesToSync["DisableCardParticleAnimations"].Add(toggle1);
+            TogglesToSync["ZoomToAbsoluteSize"].Add(toggle1);
 
             void ReorientCardChanged(bool val)
             {
-                ReorientCard = val;
-                CardEnlargerDemo.DemoCardZoomRefresh();
-                SyncOptionsMenus();
+                ReorientCard = (bool)val;
+                UpdateAndRefreshCardZoom();
             }
             Toggle toggle2 = MenuHandler.CreateToggle(ReorientCard, "Reorient Zoomed Card Upright", menu, ReorientCardChanged, 20, color: easyChangeColor).GetComponent<Toggle>();
-            TogglesToSync["DisableCardParticleAnimations"].Add(toggle2);
+            TogglesToSync["ReorientCard"].Add(toggle2);
             MenuHandler.CreateText(" ", menu, out TextMeshProUGUI _, 30);
 
 
             void ZoomTimeChanged(float val)
             {
-                ZoomTime = val;
-                CardEnlargerDemo.DemoCardZoomRefresh();
-                SyncOptionsMenus();
+                ZoomTime = (float)val;
+                UpdateAndRefreshCardZoom();
             }
             MenuHandler.CreateSlider("Card Zoom Animation Time", menu, 30, 0.001f, 1.0f, ZoomTime, ZoomTimeChanged, out Slider slider5, false, color: easyChangeColor);
             SlidersToSync["ZoomTime"].Add(slider5);
 
             void DecreaseDiscardMotionsChanged(bool val)
             {
-                DecreaseDiscardMotions = val;
-                SyncOptionsMenus();
+                DecreaseDiscardMotions = (bool)val;
+                UpdateAndRefreshCardZoom();
             }
             Toggle toggle3 = MenuHandler.CreateToggle(DecreaseDiscardMotions, "Decrease Discard Card Motions", menu, DecreaseDiscardMotionsChanged, 20, color: easyChangeColor).GetComponent<Toggle>();
             TogglesToSync["DecreaseDiscardMotions"].Add(toggle3);
 
             void DisableCardBobbingEffectChanged(bool val)
             {
-                DisableCardBobbingEffect = val;
-                CardEnlargerDemo.DemoCardZoomRefresh();
-                SyncOptionsMenus();
+                DisableCardBobbingEffect = (bool)val;
+                UpdateAndRefreshCardZoom();
             }
             Toggle toggle4 = MenuHandler.CreateToggle(DisableCardBobbingEffect, "Disable Card Bobbing when Highlighted", menu, DisableCardBobbingEffectChanged, 20, color: easyChangeColor).GetComponent<Toggle>();
             TogglesToSync["DisableCardBobbingEffect"].Add(toggle4);
 
             void DisableCardFlippingEffectChanged(bool val)
             {
-                DisableCardFlippingEffect = val;
-                SyncOptionsMenus();
+                DisableCardFlippingEffect = (bool)val;
+                UpdateAndRefreshCardZoom();
             }
             Toggle toggle5 = MenuHandler.CreateToggle(DisableCardFlippingEffect, "Disable Card Flipping when Revealed", menu, DisableCardFlippingEffectChanged, 20, color: easyChangeColor).GetComponent<Toggle>();
             TogglesToSync["DisableCardFlippingEffect"].Add(toggle5);
@@ -484,17 +515,19 @@ namespace CardMagnifier
                 CardZoomDemoMode = !CardZoomDemoMode;
             }
             MenuHandler.CreateButton("Toggle Demo", menu, ToggleDemo, 30);
-            MenuHandler.CreateText("LMB-drag to move demo card around, Scrollwheel UP/DN to scale \'starting size\', WheelButton to reset to default scale.", menu, out TextMeshProUGUI _, 20);
+            MenuHandler.CreateText("RMB-drag to move demo card around, NUMPAD+/- to scale \'starting size\', NUMPAD* to reset to default scale.", menu, out TextMeshProUGUI _, 20);
             MenuHandler.CreateText(" ", menu, out TextMeshProUGUI _, 30);
 
             // 'go back' events
             menu.GetComponentInChildren<GoBack>(true).goBackEvent.AddListener(delegate ()
             {
                 CardZoomDemoMode = false;
+                SyncOptionsMenus();
             });
             menu.transform.Find("Group/Back").gameObject.GetComponent<Button>().onClick.AddListener(delegate ()
             {
                 CardZoomDemoMode = false;
+                SyncOptionsMenus();
             });
 
         }
@@ -508,33 +541,28 @@ namespace CardMagnifier
 
             void CardBarPreviewXOverideChanged(float val)
             {
-                CardBarPreviewXOveride = val;
-                CardEnlargerDemo.DemoCardBarPreviewRefresh();
-                SyncOptionsMenus();
+                CardBarPreviewXOveride = (float)val;
+                UpdateAndRefreshCardBar();
             }
             MenuHandler.CreateSlider("X From Center", menu, 30, -50.0f, 50.0f, CardBarPreviewXOveride, CardBarPreviewXOverideChanged, out Slider slider1, false, color: hardChangeColor);
             SlidersToSync["CardBarPreviewXOveride"].Add(slider1);
 
             void CardBarPreviewYOverideChanged(float val)
             {
-                CardBarPreviewYOveride = val;
-                CardEnlargerDemo.DemoCardBarPreviewRefresh();
-                SyncOptionsMenus();
+                CardBarPreviewYOveride = (float)val;
+                UpdateAndRefreshCardBar();
             }
             MenuHandler.CreateSlider("Y From Center", menu, 30, -50.0f, 50.0f, CardBarPreviewYOveride, CardBarPreviewYOverideChanged, out Slider slider2, false, color: hardChangeColor);
-            SlidersToSync["CardBarPreviewXOveride"].Add(slider2);
-            MenuHandler.CreateText("Preview Position:", menu, out TextMeshProUGUI _, 30);
-
+            SlidersToSync["CardBarPreviewYOveride"].Add(slider2);
 
             void CardBarPreviewScaleOverideChanged(float val)
             {
-                CardBarPreviewScaleOveride = val;
-                CardEnlargerDemo.DemoCardBarPreviewRefresh();
-                SyncOptionsMenus();
+                CardBarPreviewScaleOveride = (float)val;
+                UpdateAndRefreshCardBar();
             }
-            MenuHandler.CreateSlider("CardBar Preview X Position", menu, 30, 0.5f, 5.0f, CardBarPreviewScaleOveride, CardBarPreviewScaleOverideChanged, out Slider slider3, false, color: hardChangeColor);
-            SlidersToSync["CardBarPreviewXOveride"].Add(slider3);
-            MenuHandler.CreateText("Preview Position:", menu, out TextMeshProUGUI _, 30);
+            MenuHandler.CreateSlider("CardBar Preview Size", menu, 30, 0.5f, 5.0f, CardBarPreviewScaleOveride, CardBarPreviewScaleOverideChanged, out Slider slider3, false, color: hardChangeColor);
+            SlidersToSync["CardBarPreviewScaleOveride"].Add(slider3);
+            MenuHandler.CreateText(" ", menu, out TextMeshProUGUI _, 30);
 
 
             void ToggleDemo()
@@ -547,10 +575,12 @@ namespace CardMagnifier
             menu.GetComponentInChildren<GoBack>(true).goBackEvent.AddListener(delegate ()
             {
                 CardBarPreviewDemoMode = false;
+                SyncOptionsMenus();
             });
             menu.transform.Find("Group/Back").gameObject.GetComponent<Button>().onClick.AddListener(delegate ()
             {
                 CardBarPreviewDemoMode = false;
+                SyncOptionsMenus();
             });
         }
 
@@ -590,6 +620,7 @@ namespace CardMagnifier
             // GameModeManager.AddHook(GameModeHooks.HookPlayerPickEnd, OnPlayerPickEnd);
             GameModeManager.AddHook(GameModeHooks.HookPointStart, OnPointStart);
 
+            gameObject.AddComponent<CardEnlargerDemo>();
         }
 
         public void Update()
@@ -599,12 +630,14 @@ namespace CardMagnifier
 
         public IEnumerator OnPlayerPickStart(IGameModeHandler gm)
         {
-            UnityEngine.Debug.Log("[CardMagnifier] Player Picking Started");
+            // UnityEngine.Debug.Log("[CardMagnifier] Player Picking Started");
+            CardEnlarger.UpdateConfigs();
+            CardEnlarger.mapEmbiggenerScale = 1.0f;
 
             CardEnlarger.SetCameraPosCardPick();
             CardEnlarger.isCardPickPhase = true;
 
-            if (timerUI == null)
+            if (timerUI == null && PickTimerSearchCount > 0)
             {
                 GameObject[] gameObjects = Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[];
                 foreach (GameObject item in gameObjects)
@@ -613,11 +646,16 @@ namespace CardMagnifier
                     {
                         timerUI = item;
                         UnityEngine.Debug.Log("[CardMagnifier] Found TimerUI(Clone)");
+                        timerUI.transform.localPosition = new Vector3(0.0f, -390.0f, 0.0f);
+
+                        PickTimerSearchCount = 0;
                         break;
                     }
                 }
+
+                PickTimerSearchCount--;
             }
-            else
+            else if (timerUI != null)
             {
                 timerUI.transform.localPosition = new Vector3(0.0f, -390.0f, 0.0f);
             }
@@ -627,7 +665,7 @@ namespace CardMagnifier
 
         public IEnumerator OnPointStart(IGameModeHandler gm)
         {
-            UnityEngine.Debug.Log("[CardMagnifier] Point Start");
+            // UnityEngine.Debug.Log("[CardMagnifier] Point Start");
             CardEnlarger.SetCameraPosGameplay();
         
             yield break;

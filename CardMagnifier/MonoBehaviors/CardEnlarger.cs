@@ -453,6 +453,11 @@ namespace CardMagnifier.MonoBehaviors
 
         public void EnableCardZoom()
         {
+            if (cardBaseParent == null)
+            {
+                cardBaseParent = gameObject;
+            }
+
             this.ExecuteAfterFrames(5, () =>
             {
                 zoomEffectEnabled = true;
@@ -503,6 +508,7 @@ namespace CardMagnifier.MonoBehaviors
 
         public void DemoOveride()
         {
+            // UnityEngine.Debug.Log("[CardMagnifier] DemoOveride A");
             cardBaseParent.transform.position = CardEnlargerDemo.demoCardStartPos;
             cardBaseParent.transform.localEulerAngles = new Vector3
             (
@@ -514,11 +520,15 @@ namespace CardMagnifier.MonoBehaviors
 
             cardVisuals.transform.localScale = Vector3.one * 0.9f;
 
+            // UnityEngine.Debug.Log("[CardMagnifier] DemoOveride B");
             cardPrevStateSaved = false;
             SetupCardEnlarger();
 
+            // UnityEngine.Debug.Log("[CardMagnifier] DemoOveride C");
             cardIsHighLighted = true;
             ResetTimer();
+
+            // UnityEngine.Debug.Log("[CardMagnifier] DemoOveride D");
         }
 
         // adaptive scaling
@@ -529,7 +539,7 @@ namespace CardMagnifier.MonoBehaviors
             if (gameCamera != null)
             {
                 cameraOrthoSizeCardPick = gameCamera.orthographicSize;
-                UnityEngine.Debug.Log("SpotlightCam ortho size: " + cameraOrthoSizeCardPick);
+                // UnityEngine.Debug.Log("SpotlightCam ortho size: " + cameraOrthoSizeCardPick);
             }
         }
 
@@ -540,7 +550,7 @@ namespace CardMagnifier.MonoBehaviors
             if (gameCamera != null)
             {
                 cameraOrthoSizeGameplay = gameCamera.orthographicSize;
-                UnityEngine.Debug.Log("SpotlightCam ortho size: " + cameraOrthoSizeCardPick);
+                // UnityEngine.Debug.Log("SpotlightCam ortho size: " + cameraOrthoSizeGameplay);
 
                 currentResolution = new Vector2Int
                 (
@@ -566,7 +576,7 @@ namespace CardMagnifier.MonoBehaviors
         public static CardInfo demoCardInfo;
         public static GameObject demoCardObject, demoStartPosObj, demoZoomPointObj; // link to parent of CardBase
 
-        public static float demoCardEdgeTilt = 15.0f; // value at right edge of screen?
+        public static float demoCardEdgeTilt = -15.0f / 35.0f; // value at right edge of screen?
 
         public static Vector3 demoCardStartPos = new Vector3(0.0f, 4.5f, -5.0f);
         public static Vector3 demoCardStartRotation = Vector3.zero;
@@ -577,6 +587,9 @@ namespace CardMagnifier.MonoBehaviors
         public static bool demoCardIsDragged = false;
         public static Vector3 dragDisplacement = Vector3.zero, dragStart;
         public static float demoCardScale = 0.9f;
+
+        public const float RealtimeToRefresh = 0.1f;
+        public static float RealtimeLastRefreshed;
 
         public void Update()
         {
@@ -590,13 +603,13 @@ namespace CardMagnifier.MonoBehaviors
                     DemoCardZoomInstantiate();
                 }
 
-                if (Input.GetMouseButtonDown(0) && demoCardIsDragged == false)
+                if (Input.GetMouseButtonDown(1) && demoCardIsDragged == false)
                 {
                     // drag start
                     dragStart = MainCam.instance.cam.ScreenToWorldPoint(Input.mousePosition);
                     demoCardIsDragged = true;
                 }
-                else if (Input.GetMouseButtonUp(0) && demoCardIsDragged == true)
+                else if (Input.GetMouseButtonUp(1) && demoCardIsDragged == true)
                 {
                     // drag end
                     demoCardStartPos += dragDisplacement;
@@ -611,17 +624,38 @@ namespace CardMagnifier.MonoBehaviors
                     demoCardIsDragged = false;
                 }
 
-                if (Input.GetMouseButtonDown(2))
+                if (Input.GetKeyDown(KeyCode.KeypadMultiply))
                 {
                     //reset card starting scale
                     demoCardScale = 0.9f;
                     demoCardStartScale = Vector3.one * demoCardScale;
+
+                    demoStartPosObj.transform.localScale = demoCardStartScale;
+                    DemoCardZoomRefresh();
+                }
+                else if (Input.GetKeyDown(KeyCode.KeypadPlus))
+                {
+                    demoCardScale += 0.05f;
+                    demoCardScale = Mathf.Clamp(demoCardScale, 0.5f, 2.0f);
+                    demoCardStartScale = Vector3.one * demoCardScale;
+
+                    demoStartPosObj.transform.localScale = demoCardStartScale;
+                    DemoCardZoomRefresh();
+                }
+                else if (Input.GetKeyDown(KeyCode.KeypadMinus))
+                {
+                    demoCardScale -= 0.05f;
+                    demoCardScale = Mathf.Clamp(demoCardScale, 0.5f, 2.0f);
+                    demoCardStartScale = Vector3.one * demoCardScale;
+
+                    demoStartPosObj.transform.localScale = demoCardStartScale;
+                    DemoCardZoomRefresh();
                 }
 
-                if (Input.mouseScrollDelta.y != 0.0f)
-                {
-                    UnityEngine.Debug.Log("Input.mouseScrollDelta.y : " + Input.mouseScrollDelta.y);
-                }
+                // if (Input.mouseScrollDelta.y != 0.0f)
+                // {
+                //     UnityEngine.Debug.Log("Input.mouseScrollDelta.y : " + Input.mouseScrollDelta.y);
+                // }
 
                 if (demoCardIsDragged)
                 {
@@ -633,8 +667,10 @@ namespace CardMagnifier.MonoBehaviors
                     (
                         0.0f,
                         0.0f,
-                        CardEnlargerDemo.demoCardEdgeTilt * demoCardStartPos.x
+                        CardEnlargerDemo.demoCardEdgeTilt * (demoCardStartPos.x + dragDisplacement.x)
                     );
+
+                    // demoZoomPointObj.transform.position = CardEnlarger.configZoomToPos;
                 }
             }
             else if (isDemoCardBarPreviewMode)
@@ -649,6 +685,10 @@ namespace CardMagnifier.MonoBehaviors
                 if (demoCardObject != null)
                 {
                     GameObject.Destroy(demoCardObject);
+                }
+                if (demoStartPosObj != null)
+                {
+                    GameObject.Destroy(demoStartPosObj);
                 }
             }
         }
@@ -670,9 +710,23 @@ namespace CardMagnifier.MonoBehaviors
             );
             demoCardObject.transform.localScale = demoCardStartScale;
 
+            // temp starting point
+            if (demoStartPosObj != null)
+            {
+                GameObject.Destroy(demoStartPosObj);
+            }
+            else
+            {
+                demoStartPosObj = GameObject.Instantiate(demoCardObject);
+            }
+
             // attach CardEnlarger
             CardEnlarger cardEnlarger = demoCardObject.AddComponent<CardEnlarger>();
-            cardEnlarger.DemoOveride();
+            this.ExecuteAfterFrames(2, delegate ()
+            {
+                cardEnlarger.EnableCardZoom();
+                cardEnlarger.DemoOveride();
+            });
         }
 
         public void DemoCardBarInstantiate()
@@ -682,7 +736,7 @@ namespace CardMagnifier.MonoBehaviors
 
             demoCardObject.transform.position = CardEnlarger.configCardBarPreviewPosition;
             demoCardObject.transform.localEulerAngles = Vector3.zero;
-            demoCardObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale;
+            demoCardObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale * CardEnlarger.screenResolutionScale;
         }
 
         public static CardInfo GetRandomCardInfo()
@@ -717,6 +771,14 @@ namespace CardMagnifier.MonoBehaviors
 
         public static void DemoCardZoomRefresh()
         {
+            if (Time.time > RealtimeLastRefreshed + RealtimeToRefresh)
+            {
+                RealtimeLastRefreshed = Time.time;
+            }
+            else return;
+
+            CardEnlarger.UpdateConfigs();
+
             if (isDemoCardZoomMode)
             {
                 CardEnlarger cardEnlarger = demoCardObject.GetComponent<CardEnlarger>();
@@ -726,6 +788,14 @@ namespace CardMagnifier.MonoBehaviors
 
         public static void DemoCardBarPreviewRefresh()
         {
+            if (Time.time > RealtimeLastRefreshed + RealtimeToRefresh)
+            {
+                RealtimeLastRefreshed = Time.time;
+            }
+            else return;
+
+            CardEnlarger.UpdateConfigs();
+
             if (isDemoCardBarPreviewMode)
             {
                 demoCardObject.transform.position = CardEnlarger.configCardBarPreviewPosition;
