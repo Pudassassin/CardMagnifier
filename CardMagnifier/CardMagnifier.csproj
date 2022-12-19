@@ -15,9 +15,6 @@
     <Reference Include="BepInEx">
       <HintPath>..\..\Toolkit\BepInExx\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
-    <Reference Include="CardChoiceSpawnUniqueCardPatch">
-      <HintPath>..\..\Toolkit\Modding Libraries\Pykess-CardChoiceSpawnUniqueCardPatch\CardChoiceSpawnUniqueCardPatch.dll</HintPath>
-    </Reference>
     <Reference Include="ModdingUtils">
       <HintPath>..\..\Toolkit\Modding Libraries\Pykess-ModdingUtils\ModdingUtils.dll</HintPath>
     </Reference>

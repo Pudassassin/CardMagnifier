@@ -561,8 +561,8 @@ namespace CardMagnifier.MonoBehaviors
                 mapEmbiggenerScale = cameraOrthoSizeGameplay / cameraOrthoSizeCardPick;
                 screenResolutionScale = Mathf.Min
                 (
-                    currentResolution.x / defaultResolution.x,
-                    currentResolution.y / defaultResolution.y
+                    (float)currentResolution.x / (float)defaultResolution.x,
+                    (float)currentResolution.y / (float)defaultResolution.y
                 );
             }
 

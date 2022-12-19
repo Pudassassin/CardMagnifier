@@ -14,8 +14,6 @@ using UnboundLib.Cards;
 using UnboundLib.Utils.UI;
 using HarmonyLib;
 
-using CardChoiceSpawnUniqueCardPatch.CustomCategories;
-
 using CardMagnifier.MonoBehaviors;
 
 namespace CardMagnifier
@@ -23,7 +21,6 @@ namespace CardMagnifier
     // These are the mods required for our mod to work
     [BepInDependency("com.willis.rounds.unbound", BepInDependency.DependencyFlags.HardDependency)]
     [BepInDependency("pykess.rounds.plugins.moddingutils", BepInDependency.DependencyFlags.HardDependency)]
-    [BepInDependency("pykess.rounds.plugins.cardchoicespawnuniquecardpatch", BepInDependency.DependencyFlags.HardDependency)]
 
     // Declares our mod to Bepin
     [BepInPlugin(ModId, ModName, Version)]
@@ -34,7 +31,7 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "Card Magnifier";
-        private const string Version = "0.1.0"; //build #26 / Release 0-1-0
+        private const string Version = "0.1.0"; //build #27 / Release 0-1-0
 
         private const string CompatibilityModName = "CardMagnifier";
 
@@ -237,8 +234,8 @@ namespace CardMagnifier
             ZoomPointXOffset = 0.0f;
             ZoomPointYOffset = -8.5f;
 
-            ZoomScale = 1.45f;
-            ZoomToAbsoluteSize = false;
+            ZoomScale = 1.35f;
+            ZoomToAbsoluteSize = true;
             ReorientCard = false;
 
             ZoomTime = 0.2f;
@@ -252,9 +249,9 @@ namespace CardMagnifier
         {
             CardToZoomPointFactor = 1.0f;
             ZoomPointXOffset = 0.0f;
-            ZoomPointYOffset = 3.5f;
+            ZoomPointYOffset = 3.25f;
 
-            ZoomScale = 1.35f;
+            ZoomScale = 1.4f;
             ZoomToAbsoluteSize = true;
             ReorientCard = true;
 
@@ -269,9 +266,9 @@ namespace CardMagnifier
         {
             CardToZoomPointFactor = 1.0f;
             ZoomPointXOffset = 0.0f;
-            ZoomPointYOffset = 3.5f;
+            ZoomPointYOffset = 3.25f;
 
-            ZoomScale = 1.35f;
+            ZoomScale = 1.4f;
             ZoomToAbsoluteSize = true;
             ReorientCard = true;
 
