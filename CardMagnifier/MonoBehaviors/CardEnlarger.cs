@@ -7,6 +7,7 @@ using UnityEngine;
 using UnboundLib.GameModes;
 using UnboundLib;
 using HarmonyLib;
+using UnityEngine.UI;
 
 namespace CardMagnifier.MonoBehaviors
 {
@@ -22,8 +23,16 @@ namespace CardMagnifier.MonoBehaviors
             // "__PCE__Rare"
         };
 
-        public static Vector2Int defaultResolution = new Vector2Int(1920, 1080); // in case of adaptive zoom feature
-        // public static float mapEmbiggenerScale = 1.0f;
+        // in case of adaptive zoom feature
+        public static Vector2Int defaultResolution = new Vector2Int(1920, 1080);
+        public static Vector2Int currentResolution;
+
+        public const float defaultCameraOrthoSize = 20.0f;
+        public static float cameraOrthoSizeCardPick, cameraOrthoSizeGameplay;
+
+        public static float screenResolutionScale = 1.0f;
+        public static float mapEmbiggenerScale = 1.0f;
+
 
         // scale 0-1, 0 = original card pos, 1 = zoom to configured pos
         public static float configPosInterpolateFactor = 1.0f;
@@ -74,7 +83,7 @@ namespace CardMagnifier.MonoBehaviors
 
         // Picked card effect variable
         public static Vector3 finalCardPos = new Vector3(0.0f, -9.0f, 0.0f);
-        public static float timeToVanish = 0.25f;
+        public static float timeToVanish = 0.20f;
 
         public float vanishTimer = 0.0f;
         public Vector3 vanishingCardPos, vanishingCardScale;
@@ -101,6 +110,27 @@ namespace CardMagnifier.MonoBehaviors
         public static float cardLifeTimeAdd = 0.0f;
         public float cardLifeExtendedTime = 0.0f; // realtime marker
         public static float realTimeToRemove = 1.5f; // realtime duration to remove
+
+        public static void UpdateConfigs()
+        {
+            configPosInterpolateFactor = CardMagnifier.CardToZoomPointFactor;
+            configZoomToPos.x = CardMagnifier.ZoomPointXOffset;
+            configZoomToPos.y = CardMagnifier.ZoomPointYOffset;
+
+            configZoomScale = CardMagnifier.ZoomScale;
+            configZoomAbsoluteEnable = CardMagnifier.ZoomToAbsoluteSize;
+            configReorientCardEnable = CardMagnifier.ReorientCard;
+
+            configInterpolateTime = CardMagnifier.ZoomTime;
+            configDisableDiscardEffect = CardMagnifier.DecreaseDiscardMotions;
+            configDisableCardBobbingEffect = CardMagnifier.DisableCardBobbingEffect;
+            configDisableCardFlippingEffect = CardMagnifier.DisableCardFlippingEffect;
+
+
+            configCardBarPreviewPosition.x = CardMagnifier.CardBarPreviewXOveride;
+            configCardBarPreviewPosition.y = CardMagnifier.CardBarPreviewYOveride;
+            configCardBarPreviewScale = CardMagnifier.CardBarPreviewScaleOveride;
+        }
 
         public void Awake()
         {
@@ -465,10 +495,243 @@ namespace CardMagnifier.MonoBehaviors
             // GameModeManager.RemoveHook(GameModeHooks.HookPlayerPickEnd, OnPlayerPickEnd);
         }
 
-        // debug
+        // debug + demo
         public void ResetTimer()
         {
             interpolateTimer = 0.0f;
+        }
+
+        public void DemoOveride()
+        {
+            cardBaseParent.transform.position = CardEnlargerDemo.demoCardStartPos;
+            cardBaseParent.transform.localEulerAngles = new Vector3
+            (
+                0.0f,
+                0.0f,
+                CardEnlargerDemo.demoCardEdgeTilt * cardBaseParent.transform.position.x
+            );
+            cardBaseParent.transform.localScale = CardEnlargerDemo.demoCardStartScale;
+
+            cardVisuals.transform.localScale = Vector3.one * 0.9f;
+
+            cardPrevStateSaved = false;
+            SetupCardEnlarger();
+
+            cardIsHighLighted = true;
+            ResetTimer();
+        }
+
+        // adaptive scaling
+        public static void SetCameraPosCardPick()
+        {
+            Camera gameCamera = GameObject.Find("SpotlightCam").GetComponent<Camera>();
+
+            if (gameCamera != null)
+            {
+                cameraOrthoSizeCardPick = gameCamera.orthographicSize;
+                UnityEngine.Debug.Log("SpotlightCam ortho size: " + cameraOrthoSizeCardPick);
+            }
+        }
+
+        public static void SetCameraPosGameplay()
+        {
+            Camera gameCamera = GameObject.Find("SpotlightCam").GetComponent<Camera>();
+
+            if (gameCamera != null)
+            {
+                cameraOrthoSizeGameplay = gameCamera.orthographicSize;
+                UnityEngine.Debug.Log("SpotlightCam ortho size: " + cameraOrthoSizeCardPick);
+
+                currentResolution = new Vector2Int
+                (
+                    gameCamera.pixelWidth,
+                    gameCamera.pixelHeight
+                );
+
+                mapEmbiggenerScale = cameraOrthoSizeGameplay / cameraOrthoSizeCardPick;
+                screenResolutionScale = Mathf.Min
+                (
+                    currentResolution.x / defaultResolution.x,
+                    currentResolution.y / defaultResolution.y
+                );
+            }
+
+        }
+    }
+
+    public class CardEnlargerDemo : MonoBehaviour
+    {
+        // asset for visualizing previews
+
+        public static CardInfo demoCardInfo;
+        public static GameObject demoCardObject, demoStartPosObj, demoZoomPointObj; // link to parent of CardBase
+
+        public static float demoCardEdgeTilt = 15.0f; // value at right edge of screen?
+
+        public static Vector3 demoCardStartPos = new Vector3(0.0f, 4.5f, -5.0f);
+        public static Vector3 demoCardStartRotation = Vector3.zero;
+        public static Vector3 demoCardStartScale = Vector3.one * 0.9f;
+
+        public static bool isDemoCardZoomMode = false;
+        public static bool isDemoCardBarPreviewMode = false;
+        public static bool demoCardIsDragged = false;
+        public static Vector3 dragDisplacement = Vector3.zero, dragStart;
+        public static float demoCardScale = 0.9f;
+
+        public void Update()
+        {
+            isDemoCardZoomMode = CardMagnifier.CardZoomDemoMode;
+            isDemoCardBarPreviewMode = CardMagnifier.CardBarPreviewDemoMode;
+
+            if (isDemoCardZoomMode)
+            {
+                if (demoCardObject == null)
+                {
+                    DemoCardZoomInstantiate();
+                }
+
+                if (Input.GetMouseButtonDown(0) && demoCardIsDragged == false)
+                {
+                    // drag start
+                    dragStart = MainCam.instance.cam.ScreenToWorldPoint(Input.mousePosition);
+                    demoCardIsDragged = true;
+                }
+                else if (Input.GetMouseButtonUp(0) && demoCardIsDragged == true)
+                {
+                    // drag end
+                    demoCardStartPos += dragDisplacement;
+                    demoCardStartRotation = new Vector3
+                    (
+                        0.0f,
+                        0.0f,
+                        CardEnlargerDemo.demoCardEdgeTilt * demoCardStartPos.x
+                    );
+                    DemoCardZoomRefresh();
+
+                    demoCardIsDragged = false;
+                }
+
+                if (Input.GetMouseButtonDown(2))
+                {
+                    //reset card starting scale
+                    demoCardScale = 0.9f;
+                    demoCardStartScale = Vector3.one * demoCardScale;
+                }
+
+                if (Input.mouseScrollDelta.y != 0.0f)
+                {
+                    UnityEngine.Debug.Log("Input.mouseScrollDelta.y : " + Input.mouseScrollDelta.y);
+                }
+
+                if (demoCardIsDragged)
+                {
+                    dragDisplacement = MainCam.instance.cam.ScreenToWorldPoint(Input.mousePosition) - dragStart;
+                    dragDisplacement.z = 0.0f;
+
+                    demoStartPosObj.transform.position = demoCardStartPos + dragDisplacement;
+                    demoStartPosObj.transform.localEulerAngles = new Vector3
+                    (
+                        0.0f,
+                        0.0f,
+                        CardEnlargerDemo.demoCardEdgeTilt * demoCardStartPos.x
+                    );
+                }
+            }
+            else if (isDemoCardBarPreviewMode)
+            {
+                if (demoCardObject == null)
+                {
+                    DemoCardBarInstantiate();
+                }
+            }
+            else
+            {
+                if (demoCardObject != null)
+                {
+                    GameObject.Destroy(demoCardObject);
+                }
+            }
+        }
+
+        public void DemoCardZoomInstantiate()
+        {
+            // pick random CardInfo
+            demoCardInfo = GetRandomCardInfo();
+
+            // spawn full package card object
+            SpawnPreviewCard(demoCardInfo);
+
+            demoCardObject.transform.position = demoCardStartPos;
+            demoCardObject.transform.localEulerAngles = new Vector3
+            (
+                0.0f,
+                0.0f,
+                CardEnlargerDemo.demoCardEdgeTilt * demoCardObject.transform.position.x
+            );
+            demoCardObject.transform.localScale = demoCardStartScale;
+
+            // attach CardEnlarger
+            CardEnlarger cardEnlarger = demoCardObject.AddComponent<CardEnlarger>();
+            cardEnlarger.DemoOveride();
+        }
+
+        public void DemoCardBarInstantiate()
+        {
+            demoCardInfo = GetRandomCardInfo();
+            SpawnPreviewCard(demoCardInfo);
+
+            demoCardObject.transform.position = CardEnlarger.configCardBarPreviewPosition;
+            demoCardObject.transform.localEulerAngles = Vector3.zero;
+            demoCardObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale;
+        }
+
+        public static CardInfo GetRandomCardInfo()
+        {
+            int roll = Mathf.RoundToInt(UnityEngine.Random.Range(0.0f, CardChoice.instance.cards.Length));
+            roll = Mathf.Clamp(roll, 0, CardChoice.instance.cards.Length - 1);
+
+            CardInfo cardInfo = CardChoice.instance.cards[roll];
+
+            return cardInfo;
+        }
+
+        public static void SpawnPreviewCard(CardInfo cardInfo)
+        {
+            if (demoCardObject != null)
+            {
+                GameObject.Destroy(demoCardObject);
+            }
+
+            demoCardObject = CardChoice.instance.AddCardVisual(cardInfo, Vector3.zero);
+            Collider2D[] componentsInChildren = demoCardObject.transform.root.GetComponentsInChildren<Collider2D>();
+            for (int i = 0; i < componentsInChildren.Length; i++)
+            {
+                componentsInChildren[i].enabled = false;
+            }
+
+            demoCardObject.GetComponentInChildren<Canvas>().sortingLayerName = "MostFront";
+            demoCardObject.GetComponentInChildren<GraphicRaycaster>().enabled = false;
+            demoCardObject.GetComponentInChildren<SetScaleToZero>().enabled = false;
+            demoCardObject.GetComponentInChildren<SetScaleToZero>().transform.localScale = Vector3.one * 1.15f;
+        }
+
+        public static void DemoCardZoomRefresh()
+        {
+            if (isDemoCardZoomMode)
+            {
+                CardEnlarger cardEnlarger = demoCardObject.GetComponent<CardEnlarger>();
+                cardEnlarger.DemoOveride();
+            }
+        }
+
+        public static void DemoCardBarPreviewRefresh()
+        {
+            if (isDemoCardBarPreviewMode)
+            {
+                demoCardObject.transform.position = CardEnlarger.configCardBarPreviewPosition;
+                demoCardObject.transform.localEulerAngles = Vector3.zero;
+                demoCardObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale;
+            }
         }
     }
 }

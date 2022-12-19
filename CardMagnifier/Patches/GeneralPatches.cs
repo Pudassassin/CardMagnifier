@@ -8,6 +8,20 @@ using CardMagnifier.MonoBehaviors;
 
 namespace CardMagnifier.Patches
 {
+    [HarmonyPatch(typeof(CardBar))]
+    class CardBar_Patch
+    {
+        [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
+        [HarmonyPatch("OnHover")]
+        static void OverrideCardBarPreviewTransform(GameObject ___currentCard)
+        {
+            float rescale = CardEnlarger.mapEmbiggenerScale * CardEnlarger.screenResolutionScale;
+            ___currentCard.transform.position = CardEnlarger.configCardBarPreviewPosition * rescale;
+            ___currentCard.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale * rescale;
+        }
+    }
+
     [HarmonyPatch(typeof(CardInfo))]
     class CardInfo_Patch
     {
