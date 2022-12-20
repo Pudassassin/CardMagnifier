@@ -31,7 +31,7 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "Card Magnifier";
-        private const string Version = "0.1.0"; //build #27 / Release 0-1-0
+        private const string Version = "0.1.1"; //build #27 / Release 0-1-0
 
         private const string CompatibilityModName = "CardMagnifier";
 
@@ -453,7 +453,7 @@ namespace CardMagnifier
                 UpdateAndRefreshCardZoom();
             }
             MenuHandler.CreateSlider("Card Zoom Scale", menu, 30, 0.5f, 5.0f, ZoomScale, ZoomScaleChanged, out Slider slider4, false, color: easyChangeColor);
-            SlidersToSync["ZoomScale"].Add(slider3);
+            SlidersToSync["ZoomScale"].Add(slider4);
 
             void ZoomToAbsoluteSizeChanged(bool val)
             {

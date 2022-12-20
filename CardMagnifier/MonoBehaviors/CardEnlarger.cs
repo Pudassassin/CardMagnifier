@@ -578,9 +578,9 @@ namespace CardMagnifier.MonoBehaviors
 
         public static float demoCardEdgeTilt = -15.0f / 35.0f; // value at right edge of screen?
 
-        public static Vector3 demoCardStartPos = new Vector3(0.0f, 4.5f, -5.0f);
+        public static Vector3 demoCardStartPos = new Vector3(-31.5f, 0.0185f, -5.0f);
         public static Vector3 demoCardStartRotation = Vector3.zero;
-        public static Vector3 demoCardStartScale = Vector3.one * 0.9f;
+        public static Vector3 demoCardStartScale = Vector3.one * 0.6f;
 
         public static bool isDemoCardZoomMode = false;
         public static bool isDemoCardBarPreviewMode = false;
@@ -636,7 +636,7 @@ namespace CardMagnifier.MonoBehaviors
                 else if (Input.GetKeyDown(KeyCode.KeypadPlus))
                 {
                     demoCardScale += 0.05f;
-                    demoCardScale = Mathf.Clamp(demoCardScale, 0.5f, 2.0f);
+                    demoCardScale = Mathf.Clamp(demoCardScale, 0.25f, 2.0f);
                     demoCardStartScale = Vector3.one * demoCardScale;
 
                     demoStartPosObj.transform.localScale = demoCardStartScale;
@@ -645,7 +645,7 @@ namespace CardMagnifier.MonoBehaviors
                 else if (Input.GetKeyDown(KeyCode.KeypadMinus))
                 {
                     demoCardScale -= 0.05f;
-                    demoCardScale = Mathf.Clamp(demoCardScale, 0.5f, 2.0f);
+                    demoCardScale = Mathf.Clamp(demoCardScale, 0.25f, 2.0f);
                     demoCardStartScale = Vector3.one * demoCardScale;
 
                     demoStartPosObj.transform.localScale = demoCardStartScale;
