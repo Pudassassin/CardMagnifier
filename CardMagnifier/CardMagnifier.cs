@@ -31,7 +31,7 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "Card Magnifier";
-        private const string Version = "0.1.2"; //build #28 / Release 0-1-0
+        private const string Version = "0.1.3"; //build #30 / Release 0-1-3
 
         private const string CompatibilityModName = "CardMagnifier";
 
@@ -77,7 +77,7 @@ namespace CardMagnifier
         {
             get
             {
-                return GetFloat("CardToZoomPointFactor", 0.3f);
+                return GetFloat("CardToZoomPointFactor", 0.6f);
             }
             set
             {
@@ -99,7 +99,7 @@ namespace CardMagnifier
         {
             get
             {
-                return GetFloat("ZoomPointYOffset", -8.5f);
+                return GetFloat("ZoomPointYOffset", -8.0f);
             }
             set
             {
@@ -230,9 +230,9 @@ namespace CardMagnifier
 
         private static void VanillaPlusPreset()
         {
-            CardToZoomPointFactor = 0.3f;
+            CardToZoomPointFactor = 0.6f;
             ZoomPointXOffset = 0.0f;
-            ZoomPointYOffset = -8.5f;
+            ZoomPointYOffset = -8.0f;
 
             ZoomScale = 1.35f;
             ZoomToAbsoluteSize = true;
@@ -611,7 +611,7 @@ namespace CardMagnifier
                     
                 },
                 NewGUI,
-                showInPauseMenu: false
+                showInPauseMenu: true
             );
 
             GameModeManager.AddHook(GameModeHooks.HookPlayerPickStart, OnPlayerPickStart);
