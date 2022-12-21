@@ -26,6 +26,7 @@ namespace CardMagnifier.MonoBehaviors
         // in case of adaptive zoom feature
         public static Vector2Int defaultResolution = new Vector2Int(1920, 1080);
         public static Vector2Int currentResolution;
+        public static float resolutionScalingFactor = 0.80f;
 
         public const float defaultCameraOrthoSize = 20.0f;
         public static float cameraOrthoSizeCardPick, cameraOrthoSizeGameplay;
@@ -146,15 +147,6 @@ namespace CardMagnifier.MonoBehaviors
             Action<bool> action = GetToggleSelectionAction();
             cardVisuals.toggleSelectionAction = (Action<bool>)Delegate.Combine(cardVisuals.toggleSelectionAction, action);
 
-            // GameModeManager.AddHook(GameModeHooks.HookPlayerPickEnd, OnPlayerPickEnd);
-            
-            // wip patch
-            // if (cardVisuals.isSelected)
-            // {
-            //     cardBaseParent = transform.parent.gameObject;
-            //     SetupCardEnlarger();
-            //     zoomEffectEnabled = true;
-            // }
         }
 
         public void Update()
@@ -164,35 +156,10 @@ namespace CardMagnifier.MonoBehaviors
                 cardVisuals = transform.GetComponentInChildren<CardVisuals>();
             }
 
-            // if (isCardPickPhase && !discardEffectEnable && !pickedEffectEnable && !zoomEffectEnabled && CheckIsInTheCardDraw())
-            // {
-            //     EnableCardZoom();
-            // }
         }
 
         public void LateUpdate()
         {
-            // if (cardBaseParent != null && CardChoice.instance.IsPicking)
-            // if (CardChoice.instance.IsPicking)
-            // {
-            //     if (CheckCardIsBlacklisted())
-            //     {
-            //         // leave it disabled
-            //         // Destroy(this);
-            //     }
-            //     else
-            //     {
-            //         // processTimer += TimeHandler.deltaTime;
-            // 
-            //         zoomEffectEnabled = true;
-            //         
-            //         if (!cardPrevStateSaved)
-            //         {
-            //             SetupCardEnlarger();
-            //         }
-            //     }
-            // }
-
             if (CheckCardIsBlacklisted())
             {
                 return;
@@ -283,10 +250,6 @@ namespace CardMagnifier.MonoBehaviors
                     }
                 }
             }
-            // else
-            // {
-            //     setCardDiscarded();
-            // }
         }
 
         public bool CheckIsInTheCardDraw()
@@ -316,10 +279,17 @@ namespace CardMagnifier.MonoBehaviors
             cardPreviousRotation = cardBaseParent.transform.localEulerAngles;
             cardPreviousScale = cardBaseParent.transform.localScale;
 
-            cardZoomToPos = Vector3.Lerp(cardPreviousPos, configZoomToPos, configPosInterpolateFactor);
+            CardEnlarger.currentResolution = new Vector2Int
+            (
+                MainCam.instance.cam.pixelWidth,
+                MainCam.instance.cam.pixelHeight
+            );
+            CardEnlarger.SetResolutionScale();
+
+            cardZoomToPos = Vector3.Lerp(cardPreviousPos, configZoomToPos, configPosInterpolateFactor) * screenResolutionScale;
             if (configZoomAbsoluteEnable)
             {
-                cardZoomToScale = Vector3.one * configZoomScale;
+                cardZoomToScale = Vector3.one * configZoomScale * screenResolutionScale;
             }
             else
             {
@@ -391,31 +361,6 @@ namespace CardMagnifier.MonoBehaviors
 
             isCardDiscarded = true;
         }
-
-        // public IEnumerator OnPlayerPickStart(IGameModeHandler gm)
-        // {
-        //     if (CheckCardIsBlacklisted())
-        //     {
-        //         zoomEffectEnabled = false;
-        //     }
-        //     else
-        //     {
-        //         zoomEffectEnabled = true;
-        //     }
-        //     yield break;
-        // }
-
-        // public IEnumerator OnPlayerPickEnd(IGameModeHandler gm)
-        // {
-        //     // cardPickEnded = true;
-        // 
-        //     if (!cardIsHighLighted)
-        //     {
-        //         SetupRandomizedCardDiscard();
-        //     }
-        //     
-        //     yield break;
-        // }
 
         public bool CheckCardIsBlacklisted()
         {
@@ -532,6 +477,17 @@ namespace CardMagnifier.MonoBehaviors
         }
 
         // adaptive scaling
+        public static void SetResolutionScale()
+        {
+            screenResolutionScale = Mathf.Min
+            (
+                (float)currentResolution.x / (float)defaultResolution.x,
+                (float)currentResolution.y / (float)defaultResolution.y
+            );
+
+            screenResolutionScale = 1 + (screenResolutionScale - 1) * resolutionScalingFactor;
+        }
+
         public static void SetCameraPosCardPick()
         {
             Camera gameCamera = GameObject.Find("SpotlightCam").GetComponent<Camera>();
@@ -559,11 +515,7 @@ namespace CardMagnifier.MonoBehaviors
                 );
 
                 mapEmbiggenerScale = cameraOrthoSizeGameplay / cameraOrthoSizeCardPick;
-                screenResolutionScale = Mathf.Min
-                (
-                    (float)currentResolution.x / (float)defaultResolution.x,
-                    (float)currentResolution.y / (float)defaultResolution.y
-                );
+                SetResolutionScale();
             }
 
         }
@@ -710,6 +662,13 @@ namespace CardMagnifier.MonoBehaviors
             );
             demoCardObject.transform.localScale = demoCardStartScale;
 
+            CardEnlarger.currentResolution = new Vector2Int
+            (
+                MainCam.instance.cam.pixelWidth,
+                MainCam.instance.cam.pixelHeight
+            );
+            CardEnlarger.SetResolutionScale();
+
             // temp starting point
             if (demoStartPosObj != null)
             {
@@ -734,7 +693,14 @@ namespace CardMagnifier.MonoBehaviors
             demoCardInfo = GetRandomCardInfo();
             SpawnPreviewCard(demoCardInfo);
 
-            demoCardObject.transform.position = CardEnlarger.configCardBarPreviewPosition;
+            CardEnlarger.currentResolution = new Vector2Int
+            (
+                MainCam.instance.cam.pixelWidth,
+                MainCam.instance.cam.pixelHeight
+            );
+            CardEnlarger.SetResolutionScale();
+
+            demoCardObject.transform.position = CardEnlarger.configCardBarPreviewPosition * CardEnlarger.screenResolutionScale;
             demoCardObject.transform.localEulerAngles = Vector3.zero;
             demoCardObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale * CardEnlarger.screenResolutionScale;
         }
@@ -800,7 +766,7 @@ namespace CardMagnifier.MonoBehaviors
             {
                 demoCardObject.transform.position = CardEnlarger.configCardBarPreviewPosition;
                 demoCardObject.transform.localEulerAngles = Vector3.zero;
-                demoCardObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale;
+                demoCardObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale * CardEnlarger.screenResolutionScale;
             }
         }
     }

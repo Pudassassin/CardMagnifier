@@ -31,7 +31,7 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "Card Magnifier";
-        private const string Version = "0.1.1"; //build #27 / Release 0-1-0
+        private const string Version = "0.1.2"; //build #28 / Release 0-1-0
 
         private const string CompatibilityModName = "CardMagnifier";
 
@@ -610,7 +610,8 @@ namespace CardMagnifier
                 { 
                     
                 },
-                NewGUI, null, false
+                NewGUI,
+                showInPauseMenu: false
             );
 
             GameModeManager.AddHook(GameModeHooks.HookPlayerPickStart, OnPlayerPickStart);
