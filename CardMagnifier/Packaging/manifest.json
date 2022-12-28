@@ -1,12 +1,13 @@
 {
     "name": "CardMagnifier",
-    "version_number": "0.1.3",
+    "version_number": "0.1.4",
     "website_url": "https://github.com/Pudassassin/CardMagnifier",
     "description": "Zoom and Enlarge the highlighted card for better readability!",
     "author": "Pudassassin",
     "dependencies": [
         "BepInEx-BepInExPack_ROUNDS-5.4.1100",
         "Pykess-ModdingUtils-0.2.7",
-        "willis81808-UnboundLib-2.10.2"
+        "willis81808-UnboundLib-2.10.2",
+        "Pykess-Pick_N_Cards-0.2.4"
     ]
 }

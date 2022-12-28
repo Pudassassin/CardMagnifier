@@ -21,6 +21,7 @@ namespace CardMagnifier
     // These are the mods required for our mod to work
     [BepInDependency("com.willis.rounds.unbound", BepInDependency.DependencyFlags.HardDependency)]
     [BepInDependency("pykess.rounds.plugins.moddingutils", BepInDependency.DependencyFlags.HardDependency)]
+    [BepInDependency("pykess.rounds.plugins.pickncards", BepInDependency.DependencyFlags.HardDependency)]
 
     // Declares our mod to Bepin
     [BepInPlugin(ModId, ModName, Version)]
@@ -31,7 +32,7 @@ namespace CardMagnifier
     {
         private const string ModId = "com.pudassassin.rounds.CardMagnifier";
         private const string ModName = "Card Magnifier";
-        private const string Version = "0.1.3"; //build #30 / Release 0-1-3
+        private const string Version = "0.1.4"; //build #31 / Release 0-1-4
 
         private const string CompatibilityModName = "CardMagnifier";
 
