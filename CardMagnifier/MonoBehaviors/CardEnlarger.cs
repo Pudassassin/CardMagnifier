@@ -15,12 +15,13 @@ namespace CardMagnifier.MonoBehaviors
 
     public class CardEnlarger : MonoBehaviour
     {
-        public static List<String> BlacklistedCards = new List<String>()
+        public static List<string> BlacklistedCards = new List<string>()
         {
             // PCE Glitch cards
             // "__PCE__Common",
             // "__PCE__Uncommon",
             // "__PCE__Rare"
+            "__CMR__Jack"
         };
 
         // in case of adaptive zoom feature
@@ -33,6 +34,8 @@ namespace CardMagnifier.MonoBehaviors
 
         public static float screenResolutionScale = 1.0f;
         public static float mapEmbiggenerScale = 1.0f;
+
+        public static float defaultScaleShake_TargetScale = 1.15f;
 
 
         // scale 0-1, 0 = original card pos, 1 = zoom to configured pos
@@ -364,9 +367,9 @@ namespace CardMagnifier.MonoBehaviors
 
         public bool CheckCardIsBlacklisted()
         {
-            foreach (String item in BlacklistedCards)
+            foreach (string item in BlacklistedCards)
             {
-                if (transform.parent.name.Contains(item))
+                if (cardBaseParent.name.Equals(item))
                 {
                     return true;
                 }
@@ -768,6 +771,63 @@ namespace CardMagnifier.MonoBehaviors
                 demoCardObject.transform.localEulerAngles = Vector3.zero;
                 demoCardObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale * CardEnlarger.screenResolutionScale;
             }
+        }
+    }
+
+    public class CardBarPreviewRescaler : MonoBehaviour
+    {
+        public static Camera gameCamera = null;
+        public static float currentOrthoSize = 20.0f;
+
+        public float rescale = 1.0f;
+        public float targetScaleCheck = 1.0f;
+
+        public void Awake()
+        {
+            RescalePreview();
+        }
+
+        public void Update()
+        {
+            RescalePreview();
+        }
+
+        public void RescalePreview()
+        {
+            rescale = (currentOrthoSize / CardEnlarger.defaultCameraOrthoSize) * CardEnlarger.screenResolutionScale;
+            gameObject.transform.position = CardEnlarger.configCardBarPreviewPosition * rescale;
+            gameObject.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale * rescale;
+
+            // this will reduce CardMagnifier's changes if there's something else changing the preview's scaling
+            // MapExtended
+            targetScaleCheck = gameObject.GetComponentInChildren<ScaleShake>().targetScale / CardEnlarger.defaultScaleShake_TargetScale;
+            gameObject.transform.localScale /= targetScaleCheck;
+        }
+
+        public static void UpdateCurrentZoom()
+        {
+            if (gameCamera == null)
+            {
+                GameObject cameraObject = GameObject.Find("SpotlightCam");
+                if (cameraObject != null)
+                {
+                    gameCamera = cameraObject.GetComponent<Camera>();
+                }
+                else
+                {
+                    currentOrthoSize = CardEnlarger.defaultCameraOrthoSize;
+                    return;
+                }
+
+                if (gameCamera == null)
+                {
+                    currentOrthoSize = CardEnlarger.defaultCameraOrthoSize;
+                    return;
+                }
+
+            }
+            
+            currentOrthoSize = gameCamera.orthographicSize;
         }
     }
 }

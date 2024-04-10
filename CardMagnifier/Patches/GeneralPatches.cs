@@ -4,6 +4,7 @@ using HarmonyLib;
 using UnityEngine;
 using UnboundLib;
 
+using CardMagnifier;
 using CardMagnifier.MonoBehaviors;
 
 namespace CardMagnifier.Patches
@@ -16,16 +17,43 @@ namespace CardMagnifier.Patches
         [HarmonyPatch("OnHover")]
         static void OverrideCardBarPreviewTransform(GameObject ___currentCard)
         {
-            float rescale = CardEnlarger.mapEmbiggenerScale * CardEnlarger.screenResolutionScale;
-            ___currentCard.transform.position = CardEnlarger.configCardBarPreviewPosition * rescale;
-            ___currentCard.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale * rescale;
+
+            // check if the preview is part of TabInfo or other on-screen overlay
+            Transform cardCanvasTransform = ___currentCard.transform.Find("CardBase(Clone)/Canvas");
+            if (cardCanvasTransform != null)
+            {
+                Canvas canvas = cardCanvasTransform.GetComponent<Canvas>();
+                if (canvas != null)
+                {
+                    if (canvas.renderMode != RenderMode.WorldSpace)
+                    {
+                        UnityEngine.Debug.LogWarning($"[{CardMagnifier.ModName}] CardBar preview card is not in WorldSpace");
+                        return;
+                    }
+                }
+                else
+                {
+                    UnityEngine.Debug.LogWarning($"[{CardMagnifier.ModName}] Cannot check new CardBar preview card! (component)");
+                }
+            }
+            else
+            {
+                UnityEngine.Debug.LogWarning($"[{CardMagnifier.ModName}] Cannot check new CardBar preview card! (object)");
+            }
+
+            // add active rescaler to vanilla/vanilla+ cardbar preview
+            ___currentCard.AddComponent<CardBarPreviewRescaler>();
+
+            // float rescale = CardEnlarger.mapEmbiggenerScale * CardEnlarger.screenResolutionScale;
+            // ___currentCard.transform.position = CardEnlarger.configCardBarPreviewPosition * rescale;
+            // ___currentCard.transform.localScale = Vector3.one * CardEnlarger.configCardBarPreviewScale * rescale;
         }
     }
 
     [HarmonyPatch(typeof(CardInfo))]
     class CardInfo_Patch
     {
-        public static GameObject selectedCard;
+        public static GameObject selectedCard = null;
 
         [HarmonyPrefix]
         [HarmonyPriority(Priority.Last)]

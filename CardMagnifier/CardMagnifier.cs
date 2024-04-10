@@ -20,8 +20,6 @@ namespace CardMagnifier
 {
     // These are the mods required for our mod to work
     [BepInDependency("com.willis.rounds.unbound", BepInDependency.DependencyFlags.HardDependency)]
-    [BepInDependency("pykess.rounds.plugins.moddingutils", BepInDependency.DependencyFlags.HardDependency)]
-    [BepInDependency("pykess.rounds.plugins.pickncards", BepInDependency.DependencyFlags.HardDependency)]
 
     // Declares our mod to Bepin
     [BepInPlugin(ModId, ModName, Version)]
@@ -30,13 +28,14 @@ namespace CardMagnifier
     [BepInProcess("Rounds.exe")]
     public class CardMagnifier : BaseUnityPlugin
     {
-        private const string ModId = "com.pudassassin.rounds.CardMagnifier";
-        private const string ModName = "Card Magnifier";
-        private const string Version = "0.1.4"; //build #31 / Release 0-1-4
+        public const string ModId = "com.pudassassin.rounds.CardMagnifier";
+        public const string ModName = "Card Magnifier";
+        public const string Version = "0.2.0"; //build #36 / Release 0-2-0
 
-        private const string CompatibilityModName = "CardMagnifier";
+        public const string CompatibilityModName = "CardMagnifier";
 
         public static GameObject timerUI = null;
+        public static Vector3 timerUIPos = new Vector3(-200.0f, -400.0f, 0.0f);
 
         // config part
 
@@ -624,7 +623,7 @@ namespace CardMagnifier
 
         public void Update()
         {
-            
+            CardBarPreviewRescaler.UpdateCurrentZoom();
         }
 
         public IEnumerator OnPlayerPickStart(IGameModeHandler gm)
@@ -656,7 +655,7 @@ namespace CardMagnifier
             }
             else if (timerUI != null)
             {
-                timerUI.transform.localPosition = new Vector3(0.0f, -390.0f, 0.0f);
+                timerUI.transform.localPosition = timerUIPos;
             }
         
             yield break;
