@@ -30,7 +30,7 @@ namespace CardMagnifier
     {
         public const string ModId = "com.pudassassin.rounds.CardMagnifier";
         public const string ModName = "Card Magnifier";
-        public const string Version = "0.2.0"; //build #36 / Release 0-2-0
+        public const string Version = "0.2.1"; //build #38 / Release 0-2-1
 
         public const string CompatibilityModName = "CardMagnifier";
 

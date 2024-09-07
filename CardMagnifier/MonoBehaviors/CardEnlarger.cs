@@ -30,7 +30,7 @@ namespace CardMagnifier.MonoBehaviors
         public static float resolutionScalingFactor = 0.80f;
 
         public const float defaultCameraOrthoSize = 20.0f;
-        public static float cameraOrthoSizeCardPick, cameraOrthoSizeGameplay;
+        public static float cameraOrthoSizeCardPick, cameraOrthoSizeGameplay, currentCameraOrthoSize;
 
         public static float screenResolutionScale = 1.0f;
         public static float mapEmbiggenerScale = 1.0f;
@@ -108,6 +108,7 @@ namespace CardMagnifier.MonoBehaviors
 
         private CardVisuals cardVisuals = null;
         private GameObject cardBaseParent = null;
+        public ScaleShake scaleShake = null;
 
         // debug
         private bool cardLifeExtended = false;
@@ -144,6 +145,7 @@ namespace CardMagnifier.MonoBehaviors
         public void Start()
         {
             cardVisuals = transform.GetComponentInChildren<CardVisuals>();
+            scaleShake = transform.GetComponentInChildren<ScaleShake>();
             // cardBaseParent = transform.parent.gameObject;
             cardBaseParent = transform.gameObject;
 
@@ -154,11 +156,23 @@ namespace CardMagnifier.MonoBehaviors
 
         public void Update()
         {
+            currentCameraOrthoSize = MainCam.instance.cam.orthographicSize;
+
             if (cardVisuals == null)
             {
                 cardVisuals = transform.GetComponentInChildren<CardVisuals>();
             }
 
+            if (scaleShake == null)
+            {
+                scaleShake = transform.GetComponentInChildren<ScaleShake>();
+            }
+
+            if (configDisableCardBobbingEffect)
+            {
+                ScaleShake scaleShake = gameObject.GetComponentInChildren<ScaleShake>();
+                scaleShake.enabled = false;
+            }
         }
 
         public void LateUpdate()
@@ -177,6 +191,10 @@ namespace CardMagnifier.MonoBehaviors
                     if (configDisableCardBobbingEffect)
                     {
                         cardVisuals.transform.localScale = Vector3.one * 1.15f;
+                    }
+                    else
+                    {
+                        scaleShake.targetScale = 1.15f;
                     }
 
                     // wip disable card flip
@@ -201,6 +219,9 @@ namespace CardMagnifier.MonoBehaviors
                     if (configDisableCardBobbingEffect)
                     {
                         transform.localScale = Vector3.one * 0.9f;
+                    }
+                    {
+                        scaleShake.targetScale = 0.9f;
                     }
                 }
 
@@ -315,8 +336,10 @@ namespace CardMagnifier.MonoBehaviors
                 iValue = BinomialToLerpMapping(Mathf.Clamp01(iValue));
             }
 
+            float cameraScale = currentCameraOrthoSize / defaultCameraOrthoSize;
+
             cardBaseParent.transform.localPosition = Vector3.Lerp(cardPreviousPos, cardZoomToPos, iValue);
-            cardBaseParent.transform.localScale = Vector3.Lerp(cardPreviousScale, cardZoomToScale, iValue);
+            cardBaseParent.transform.localScale = Vector3.Lerp(cardPreviousScale, cardZoomToScale * cameraScale, iValue);
             if (configReorientCardEnable)
             {
                 cardBaseParent.transform.localEulerAngles = V3RotationalLerp(cardPreviousRotation, configZoomRotation, iValue);
@@ -504,7 +527,8 @@ namespace CardMagnifier.MonoBehaviors
 
         public static void SetCameraPosGameplay()
         {
-            Camera gameCamera = GameObject.Find("SpotlightCam").GetComponent<Camera>();
+            // Camera gameCamera = GameObject.Find("SpotlightCam").GetComponent<Camera>();
+            Camera gameCamera = GameObject.Find("MainCamera").GetComponent<Camera>();
 
             if (gameCamera != null)
             {
